@@ -1,0 +1,16 @@
+.hearts-bg {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+}
+
+.heart-particle {
+    position: absolute;
+    bottom: -5%;
+    animation: floatUp linear infinite;
+    opacity: 0;
+    user-select: none;
+    filter: drop-shadow(0 2px 6px rgba(232, 62, 108, 0.25));
+}

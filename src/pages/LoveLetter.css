@@ -1,0 +1,185 @@
+.letter-page {
+    min-height: 100vh;
+    background: linear-gradient(155deg, #fff8f0 0%, #ffdce8 50%, #f0e6ff 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.letter-sparkles {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.letter-sparkle {
+    position: absolute;
+    pointer-events: none;
+    user-select: none;
+}
+
+.letter-wrapper {
+    position: relative;
+    z-index: 1;
+    padding: 8rem 1.5rem 5rem;
+    display: flex;
+    justify-content: center;
+}
+
+.letter-card {
+    background:
+        repeating-linear-gradient(transparent,
+            transparent 31px,
+            rgba(255, 133, 169, 0.12) 31px,
+            rgba(255, 133, 169, 0.12) 32px),
+        linear-gradient(135deg, #fff9fb 0%, #fff3f7 100%);
+    border: 2px solid rgba(255, 180, 200, 0.4);
+    border-radius: 1.5rem;
+    box-shadow:
+        0 12px 60px rgba(232, 62, 108, 0.12),
+        0 2px 0 rgba(255, 133, 169, 0.1) inset;
+    max-width: 680px;
+    width: 100%;
+    padding: 2.5rem 3rem 2.5rem;
+    position: relative;
+}
+
+.letter-ribbon {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #ff85a9, #c084fc);
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.3rem 1.2rem;
+    border-radius: 9999px;
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+}
+
+.letter-lines {
+    min-height: 320px;
+    line-height: 32px;
+    position: relative;
+}
+
+.letter-line {
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.2rem;
+    color: #4a2040;
+    line-height: 32px;
+    margin: 0;
+}
+
+.letter-line--empty {
+    height: 32px;
+}
+
+.letter-line--greeting {
+    font-size: 1.55rem;
+    font-weight: 700;
+    color: #e83e6c;
+    margin-bottom: 4px;
+}
+
+.letter-line--sign {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #a855f7;
+    margin-top: 12px;
+}
+
+.letter-cursor {
+    display: inline-block;
+    color: #e83e6c;
+    font-size: 1.3rem;
+    animation: blink 0.7s step-end infinite;
+}
+
+.letter-start-btn {
+    margin-top: 1.5rem;
+    font-size: 1rem;
+}
+
+.letter-done {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.25rem;
+    color: #a855f7;
+    font-weight: 600;
+    animation: fadeInUp 0.7s ease;
+}
+
+.letter-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.letter-seal {
+    font-size: 2.5rem;
+}
+
+@media (max-width: 820px) {
+    .letter-wrapper {
+        padding: 7rem 1.2rem 4rem;
+    }
+
+    .letter-card {
+        padding: 2rem 2rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .letter-wrapper {
+        padding: 6rem 0.8rem 3rem;
+    }
+
+    .letter-card {
+        padding: 1.5rem 1.2rem;
+        border-radius: 1.1rem;
+    }
+
+    .letter-line {
+        font-size: 1rem;
+        line-height: 28px;
+    }
+
+    .letter-lines {
+        min-height: 250px;
+        line-height: 28px;
+    }
+
+    .letter-line--greeting {
+        font-size: 1.3rem;
+    }
+
+    .letter-line--sign {
+        font-size: 1.2rem;
+    }
+
+    .letter-seal {
+        font-size: 2rem;
+    }
+
+    .letter-ribbon {
+        font-size: 0.72rem;
+        padding: 0.25rem 1rem;
+    }
+}
+
+@media (max-width: 380px) {
+    .letter-wrapper {
+        padding: 5.5rem 0.5rem 2rem;
+    }
+
+    .letter-card {
+        padding: 1.2rem 0.9rem;
+    }
+
+    .letter-line {
+        font-size: 0.92rem;
+    }
+}

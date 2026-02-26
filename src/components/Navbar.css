@@ -1,0 +1,203 @@
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 0.7rem 1.2rem;
+    background: rgba(255, 240, 245, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 180, 200, 0.2);
+    transition: all 0.35s ease;
+}
+
+.navbar--scrolled {
+    background: rgba(255, 240, 245, 0.94);
+    box-shadow: 0 4px 24px rgba(232, 62, 108, 0.1);
+    padding: 0.5rem 1.2rem;
+}
+
+.navbar__inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.navbar__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: none;
+    font-size: inherit;
+}
+
+.brand-heart {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.brand-text {
+    font-family: 'Pacifico', cursive;
+    font-size: 1.15rem;
+    background: linear-gradient(135deg, #e83e6c, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.navbar__links {
+    display: flex;
+    gap: 0.15rem;
+    list-style: none;
+    align-items: center;
+}
+
+.navbar__link {
+    display: inline-block;
+    padding: 0.4rem 0.7rem;
+    border-radius: 9999px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #6b3a5a;
+    background: none;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+    font-family: 'Poppins', sans-serif;
+}
+
+.navbar__link:hover {
+    background: rgba(255, 133, 169, 0.15);
+    color: #e83e6c;
+    transform: translateY(-1px);
+}
+
+.navbar__link--active {
+    background: linear-gradient(135deg, rgba(232, 62, 108, 0.12), rgba(168, 85, 247, 0.12));
+    color: #e83e6c;
+    font-weight: 600;
+}
+
+.navbar__link--dm {
+    border: 1.5px solid rgba(168, 85, 247, 0.25);
+}
+
+.navbar__link--logout {
+    font-size: 0.75rem;
+    color: #9b6b8a;
+    padding: 0.3rem 0.6rem;
+}
+
+.navbar__link--logout:hover {
+    color: #e83e6c;
+}
+
+/* ── User area in desktop ─── */
+.navbar__user-area {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: 0.5rem;
+    padding-left: 0.5rem;
+    border-left: 1.5px solid rgba(255, 180, 200, 0.3);
+}
+
+.navbar__avatar {
+    font-size: 1.3rem;
+}
+
+/* ── Hamburger ─────────── */
+.navbar__hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: transparent;
+    padding: 6px;
+    border-radius: 8px;
+}
+
+.ham-line {
+    display: block;
+    width: 24px;
+    height: 2.5px;
+    background: #e83e6c;
+    border-radius: 9999px;
+    transition: all 0.3s ease;
+    transform-origin: center;
+}
+
+.ham-line.open:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.ham-line.open:nth-child(2) {
+    opacity: 0;
+    transform: translateX(-10px);
+}
+
+.ham-line.open:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* ── Mobile menu ─────────── */
+.navbar__mobile-menu {
+    display: none;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.6rem 0;
+    list-style: none;
+    overflow: hidden;
+}
+
+.navbar__mobile-user {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid rgba(255, 180, 200, 0.2);
+    font-size: 0.9rem;
+    color: #6b3a5a;
+    font-weight: 500;
+}
+
+.navbar__logout-btn {
+    padding: 0.4rem 0.9rem !important;
+    font-size: 0.8rem !important;
+}
+
+@media (max-width: 900px) {
+    .navbar__links {
+        display: none;
+    }
+
+    .navbar__hamburger {
+        display: flex;
+    }
+
+    .navbar__mobile-menu {
+        display: flex;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .navbar__mobile-menu .navbar__link {
+        font-size: 0.95rem;
+        padding: 0.55rem 1rem;
+        border-radius: 12px;
+        width: 100%;
+        text-align: left;
+    }
+}
+
+@media (max-width: 400px) {
+    .brand-text {
+        font-size: 1rem;
+    }
+
+    .navbar {
+        padding: 0.5rem 0.8rem;
+    }
+}
