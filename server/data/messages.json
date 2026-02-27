@@ -13,8 +13,17 @@
     "senderId": "0225bb9ae7e961024d031c97",
     "receiverId": "7ab1fcfcbef11ba6ff118f83",
     "message": "hi",
-    "readStatus": false,
+    "readStatus": true,
     "createdAt": "2026-02-26T16:39:32.467Z",
-    "updatedAt": "2026-02-26T16:39:32.467Z"
+    "updatedAt": "2026-02-26T17:38:34.117Z"
+  },
+  {
+    "_id": "3109747c4f912bb6e7128f65",
+    "senderId": "7ab1fcfcbef11ba6ff118f83",
+    "receiverId": "0225bb9ae7e961024d031c97",
+    "message": "hello",
+    "readStatus": false,
+    "createdAt": "2026-02-26T17:38:42.487Z",
+    "updatedAt": "2026-02-26T17:38:42.487Z"
   }
 ]
