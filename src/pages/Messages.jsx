@@ -1,10 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import { messagesApi, authApi, SOCKET_URL } from '../api/messageApi';
 import './Messages.css';
+
+// Only import socket.io-client dynamically to avoid issues in production
+const isProduction = typeof window !== 'undefined' &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1';
+
+// Polling interval for production (Vercel doesn't support WebSockets)
+const POLL_INTERVAL = isProduction ? 3000 : null;
 
 export default function Messages() {
     const { user } = useAuth();
@@ -50,82 +57,103 @@ export default function Messages() {
         loadData();
     }, []);
 
-    // Socket.IO connection — FIXED for real-time
+    // Socket.IO connection (only in development — Vercel doesn't support WebSockets)
     useEffect(() => {
+        if (isProduction) return; // Skip socket in production
         const token = localStorage.getItem('lfyToken');
         if (!token) return;
 
-        const socket = io(SOCKET_URL, {
-            auth: { token },
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            reconnectionAttempts: 10,
-            reconnectionDelay: 1000,
-        });
+        let socket;
+        const connectSocket = async () => {
+            try {
+                const { io } = await import('socket.io-client');
+                socket = io(SOCKET_URL, {
+                    auth: { token },
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    reconnectionAttempts: 10,
+                    reconnectionDelay: 1000,
+                });
 
-        socketRef.current = socket;
+                socketRef.current = socket;
 
-        socket.on('connect', () => {
-            console.log('💬 Connected to real-time chat');
-        });
+                socket.on('connect', () => {
+                    console.log('💬 Connected to real-time chat');
+                });
 
-        // ── REAL-TIME: Receive new messages instantly ──
-        socket.on('message:new', (message) => {
-            setMessages(prev => {
-                // Avoid duplicates
-                if (prev.some(m => m._id === message._id)) return prev;
-                return [...prev, message];
-            });
-            // Mark as read if we're the receiver
-            if (message.receiverId?._id === user?.id || message.receiverId === user?.id) {
-                messagesApi.markRead().catch(() => { });
-                socket.emit('message:read', { messageIds: [message._id] });
+                socket.on('message:new', (message) => {
+                    setMessages(prev => {
+                        if (prev.some(m => m._id === message._id)) return prev;
+                        return [...prev, message];
+                    });
+                    if (message.receiverId?._id === user?.id || message.receiverId === user?.id) {
+                        messagesApi.markRead().catch(() => { });
+                    }
+                });
+
+                socket.on('message:read_ack', ({ messageIds }) => {
+                    setMessages(prev => prev.map(m =>
+                        messageIds.includes(m._id) ? { ...m, readStatus: true } : m
+                    ));
+                });
+
+                socket.on('message:delivered', ({ messageId }) => {
+                    setMessages(prev => prev.map(m =>
+                        m._id === messageId ? { ...m, delivered: true } : m
+                    ));
+                });
+
+                socket.on('typing:show', () => setIsTyping(true));
+                socket.on('typing:hide', () => setIsTyping(false));
+
+                socket.on('user:online', ({ userId, online }) => {
+                    if (userId !== user?.id) setPartnerOnline(online);
+                });
+
+                socket.on('connect_error', (err) => {
+                    console.log('Socket connection issue:', err.message);
+                });
+
+                socket.on('message:error', ({ error: errMsg }) => {
+                    setError(errMsg);
+                    setSending(false);
+                });
+            } catch (err) {
+                console.log('Socket.IO not available, using HTTP polling');
             }
-        });
+        };
 
-        // ── Read acknowledgment ──
-        socket.on('message:read_ack', ({ messageIds }) => {
-            setMessages(prev => prev.map(m =>
-                messageIds.includes(m._id) ? { ...m, readStatus: true } : m
-            ));
-        });
-
-        // ── Delivery confirmation ──
-        socket.on('message:delivered', ({ messageId }) => {
-            setMessages(prev => prev.map(m =>
-                m._id === messageId ? { ...m, delivered: true } : m
-            ));
-        });
-
-        socket.on('typing:show', () => setIsTyping(true));
-        socket.on('typing:hide', () => setIsTyping(false));
-
-        socket.on('user:online', ({ userId, online }) => {
-            if (userId !== user?.id) {
-                setPartnerOnline(online);
-            }
-        });
-
-        socket.on('connect_error', (err) => {
-            console.log('Socket connection issue:', err.message);
-        });
-
-        socket.on('message:error', ({ error: errMsg }) => {
-            setError(errMsg);
-            setSending(false);
-        });
+        connectSocket();
 
         return () => {
-            socket.disconnect();
+            socket?.disconnect();
         };
     }, [user?.id]);
+
+    // Polling fallback for production (fetches new messages every 3s)
+    useEffect(() => {
+        if (!POLL_INTERVAL) return;
+        const interval = setInterval(async () => {
+            try {
+                const { data } = await messagesApi.getAll();
+                setMessages(prev => {
+                    if (data.length !== prev.length) return data;
+                    const lastNew = data[data.length - 1]?._id;
+                    const lastOld = prev[prev.length - 1]?._id;
+                    if (lastNew !== lastOld) return data;
+                    return prev;
+                });
+            } catch { /* silently fail */ }
+        }, POLL_INTERVAL);
+        return () => clearInterval(interval);
+    }, []);
 
     // Scroll to bottom when messages change
     useEffect(() => {
         scrollToBottom();
     }, [messages, scrollToBottom]);
 
-    // ── FIXED: Send through Socket.IO for instant delivery ──
+    // ── Send via HTTP API (always works) + Socket.IO bonus ──
     const sendMessage = async () => {
         const text = inputVal.trim();
         if (!text || !partner || sending) return;
@@ -135,11 +163,20 @@ export default function Messages() {
         inputRef.current?.focus();
 
         try {
-            // Send via Socket.IO — server saves & broadcasts to both users
-            socketRef.current?.emit('message:send', {
-                receiverId: partner.id,
-                message: text,
+            // Primary: Send via HTTP API (works on Vercel + localhost)
+            const { data } = await messagesApi.send(partner.id, text);
+            // Add to local state immediately
+            setMessages(prev => {
+                if (prev.some(m => m._id === data._id)) return prev;
+                return [...prev, data];
             });
+            // Bonus: Also emit via socket for instant delivery to partner (dev only)
+            if (socketRef.current?.connected) {
+                socketRef.current.emit('message:send', {
+                    receiverId: partner.id,
+                    message: text,
+                });
+            }
         } catch (err) {
             setError('Failed to send message.');
         } finally {

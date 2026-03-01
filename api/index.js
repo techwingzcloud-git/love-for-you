@@ -2,6 +2,7 @@
    Vercel Serverless API — Love For You ❤️
    All backend routes in one serverless function
    Includes: Auth, Messages, Content CMS, Our Future
+   Uses MongoDB Atlas for persistent storage
    ============================================================ */
 import express from 'express';
 import cors from 'cors';
@@ -15,14 +16,17 @@ const app = express();
 let isConnected = false;
 
 async function connectDB() {
-    if (isConnected) return;
+    if (isConnected && mongoose.connection.readyState === 1) return;
     if (!process.env.MONGO_URI) {
         throw new Error('MONGO_URI environment variable is not set');
     }
     try {
+        mongoose.set('bufferCommands', false);
         await mongoose.connect(process.env.MONGO_URI);
         isConnected = true;
+        console.log('✅ MongoDB connected');
     } catch (err) {
+        isConnected = false;
         console.error('MongoDB connection error:', err.message);
         throw err;
     }
@@ -80,14 +84,14 @@ const generateToken = (userId) =>
 const protect = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
-        if (!token) return res.status(401).json({ error: 'Not authorized.' });
+        if (!token) return res.status(401).json({ error: 'Not authorized. Please log in.' });
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         const user = await User.findById(decoded.id);
         if (!user) return res.status(401).json({ error: 'User not found.' });
         req.user = user;
         next();
     } catch {
-        return res.status(401).json({ error: 'Invalid token.' });
+        return res.status(401).json({ error: 'Invalid or expired token.' });
     }
 };
 
@@ -101,10 +105,12 @@ const adminOnly = (req, res, next) => {
 // ── Middleware ─────────────────────────────────────────────────
 app.use(cors({
     origin: (origin, cb) => {
+        // Allow all Vercel preview/production URLs, localhost, and custom domains
         if (!origin || origin.endsWith('.vercel.app') ||
             origin.includes('localhost') || origin.includes('127.0.0.1')) {
             return cb(null, true);
         }
+        // Allow any origin for now (the JWT protects all routes anyway)
         cb(null, true);
     },
     credentials: true,
@@ -117,7 +123,7 @@ app.use(async (req, res, next) => {
         await connectDB();
         next();
     } catch {
-        res.status(503).json({ error: 'Database not available.' });
+        res.status(503).json({ error: 'Database not available. Please try again.' });
     }
 });
 
@@ -147,7 +153,7 @@ async function autoSeed() {
     console.log('🎉 Users seeded!');
 }
 
-// Seed default content
+// Seed default content — ALL content keys
 let contentSeeded = false;
 async function seedContent() {
     if (contentSeeded) return;
@@ -158,14 +164,87 @@ async function seedContent() {
         { key: 'navbar_brand', value: 'Love For You' },
         { key: 'home_title', value: 'Love For You ❤️' },
         { key: 'home_subtitle', value: 'This little corner of the internet was built with nothing but love, late nights, and a heart full of you.' },
+        { key: 'home_cta', value: 'Start Our Journey 💕' },
+        { key: 'home_taglines', value: JSON.stringify(['Every moment with you is a poem 🌸', 'You are my favourite daydream 💭', 'In your arms, I found my home 🏡', 'With you, every second sparkles ✨']) },
+        {
+            key: 'home_cards', value: JSON.stringify([
+                { key: 'about', icon: '💌', title: 'Our Story', desc: 'How it all began…' },
+                { key: 'gallery', icon: '📸', title: 'Gallery', desc: 'Moments frozen in time' },
+                { key: 'memories', icon: '🌸', title: 'Memories', desc: "Dates we'll never forget" },
+                { key: 'surprise', icon: '🎉', title: 'Surprise', desc: 'Something special awaits…' },
+            ])
+        },
         { key: 'about_title', value: 'Our Love Story 💕' },
+        { key: 'about_subtitle', value: "Every great love story has a beginning. Here's ours — clumsy, beautiful, and completely unforgettable." },
+        {
+            key: 'about_blocks', value: JSON.stringify([
+                { side: 'left', emoji: '🌷', title: 'How It Began', text: 'It started with something so simple — a glance, a smile, a "hey". Neither of us knew that tiny moment would change everything. The universe quietly conspired to bring two hearts together, and somehow, impossibly, it worked.' },
+                { side: 'right', emoji: '💫', title: 'Falling Together', text: "We fell slowly, then all at once. Long late-night calls, silly memes, inside jokes that no one else would understand. We built a world just for us — warm, colourful, and wonderfully chaotic." },
+                { side: 'left', emoji: '🌸', title: 'What You Mean to Me', text: "You are the calm in my storm, the answer to questions I hadn't yet asked. Every day with you is a reminder that the best things in life are never planned." },
+                { side: 'right', emoji: '❤️', title: 'Our Future', text: 'Adventures unplanned, sunsets unshared, laughter yet to echo — so much still to come. Together, we are unstoppable. This is just the beginning.' },
+            ])
+        },
+        {
+            key: 'about_milestones', value: JSON.stringify([
+                { icon: '👀', date: 'Day One', text: 'The moment our eyes met — the world slowed down.' },
+                { icon: '💬', date: 'First Texts', text: "Messages that started casual and turned into something magical." },
+                { icon: '☕', date: 'First Date', text: "Coffee, butterflies, and smiles that wouldn't stop." },
+                { icon: '🤝', date: 'Together', text: "We decided to be each other's person — forever." },
+                { icon: '🌟', date: 'Every Day', text: 'And every single day since then has been a blessing.' },
+            ])
+        },
         { key: 'gallery_title', value: 'Our Gallery 📸' },
+        { key: 'gallery_subtitle', value: 'Moments too beautiful to forget — each one a treasure.' },
+        {
+            key: 'gallery_images', value: JSON.stringify([
+                { src: 'https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=600&q=80', caption: 'Where it all began 🌸' },
+                { src: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80', caption: 'Dancing in the rain 🌧️' },
+                { src: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&q=80', caption: 'Your smile ✨' },
+                { src: 'https://images.unsplash.com/photo-1531058020387-3be344556be6?w=600&q=80', caption: 'Golden hour moments 🌅' },
+                { src: 'https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=600&q=80', caption: 'Holding hands forever 🤝' },
+                { src: 'https://images.unsplash.com/photo-1516589091380-5d8e87df6999?w=600&q=80', caption: 'Starry night with you 🌠' },
+            ])
+        },
         { key: 'memories_title', value: 'Our Memories 🌸' },
+        { key: 'memories_subtitle', value: 'A timeline of the moments that stitched our hearts together.' },
+        {
+            key: 'memories_items', value: JSON.stringify([
+                { date: 'The First Hello', emoji: '👋', color: '#ffdce8', border: '#ff85a9', title: 'It Started With a Smile', desc: 'A nervous smile, a bold hello — and suddenly the world felt different. I didn\'t know it yet, but that was the moment my life changed forever.' },
+                { date: 'First Coffee Date', emoji: '☕', color: '#f0e6ff', border: '#c084fc', title: 'Two Hours That Felt Like Minutes', desc: 'We talked about everything and nothing. The coffee went cold. We didn\'t care. That afternoon, something beautiful began.' },
+                { date: 'First Movie Night', emoji: '🍿', color: '#fff0f5', border: '#ff85a9', title: 'We Barely Watched the Movie', desc: 'Blanket forts, terrible popcorn, and so much laughter. It wasn\'t about the movie. It was about being together.' },
+                { date: 'First "I Love You"', emoji: '❤️', color: '#ffdce8', border: '#e83e6c', title: 'Three Words, Infinite Weight', desc: 'It slipped out quietly, somewhere between a laugh and a breath. And just like that, everything changed.' },
+                { date: 'Our First Trip', emoji: '✈️', color: '#f0e6ff', border: '#a855f7', title: 'Adventures With You Are Home', desc: 'New city, new memories, same goofy us. That trip proved we could survive anything together.' },
+                { date: 'Today & Always', emoji: '🌟', color: '#fff0f5', border: '#ffb3cc', title: 'Every Day With You', desc: 'The story is still being written. Here\'s to forever. 💕' },
+            ])
+        },
         { key: 'surprise_title', value: 'Our forever is just beginning… ❤️' },
+        { key: 'surprise_message', value: "No matter how many pages, songs, or years pass — I will choose you every single time. You are my beginning, my middle, and every beautiful ending I dare to imagine. This isn't just a website. This is my heart, dressed up in pixels, whispering: I love you." },
+        {
+            key: 'letter_content', value: JSON.stringify([
+                'My Dearest Love,', '',
+                'I have tried a thousand times to find the right words —',
+                'words worthy of what you mean to me.',
+                'None of them are quite enough.', '',
+                'You are the reason mornings feel like magic.',
+                'The reason I smile at absolutely nothing.',
+                'The reason I believe in beautiful, impossible things.', '',
+                'You walked into my life as if you had always belonged there,',
+                'and quietly rearranged everything — in the most wonderful way.', '',
+                'I love the way you laugh until your eyes crinkle.',
+                'The way you say my name.',
+                'The way you make the whole world feel softer somehow.', '',
+                "If I could write a letter to the universe,",
+                'I\'d simply say: "Thank you for giving me them."', '',
+                'Forever and without conditions —', '',
+                'Yours, completely. 💕',
+            ])
+        },
+        { key: 'footer_text', value: 'Made with 💕 and infinite love · 2026' },
     ];
 
     await Content.insertMany(defaults);
     contentSeeded = true;
+    console.log('📝 Content seeded!');
 }
 
 // Seed default future items
@@ -186,6 +265,7 @@ async function seedFuture() {
 
     await Future.insertMany(defaults);
     futureSeeded = true;
+    console.log('🔮 Future items seeded!');
 }
 
 // ═══════════════════════════════════════════════
@@ -210,7 +290,7 @@ app.post('/api/auth/login', async (req, res) => {
         });
     } catch (err) {
         console.error('Login error:', err);
-        res.status(500).json({ error: 'Login failed.' });
+        res.status(500).json({ error: 'Login failed. Please try again.' });
     }
 });
 
@@ -250,7 +330,7 @@ app.post('/api/messages', protect, async (req, res) => {
     try {
         const { receiverId, message } = req.body;
         if (!receiverId || !message) return res.status(400).json({ error: 'receiverId and message required.' });
-        if (message.length > 2000) return res.status(400).json({ error: 'Message too long.' });
+        if (message.length > 2000) return res.status(400).json({ error: 'Message too long (max 2000 characters).' });
 
         const newMsg = await Message.create({
             senderId: req.user._id,
@@ -366,11 +446,12 @@ app.delete('/api/content/future/:id', protect, adminOnly, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
-// PUBLIC CONTENT ROUTES (read-only for users)
+// PUBLIC CONTENT ROUTES (read-only for authenticated users)
 // ═══════════════════════════════════════════════
 
 app.get('/api/public/content', protect, async (req, res) => {
     try {
+        await seedContent();
         const content = await Content.find();
         const contentMap = {};
         content.forEach(c => { contentMap[c.key] = c.value; });
@@ -394,8 +475,19 @@ app.get('/api/public/future', protect, async (req, res) => {
 // HEALTH CHECK
 // ═══════════════════════════════════════════════
 
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', message: '💕 Love For You API is running!' });
+app.get('/api/health', async (req, res) => {
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    res.json({
+        status: 'ok',
+        message: '💕 Love For You API is running!',
+        database: dbStatus,
+        timestamp: new Date().toISOString(),
+    });
+});
+
+// ── 404 handler ───────────────────────────────────────────────
+app.use('/api/*', (req, res) => {
+    res.status(404).json({ error: 'API route not found.' });
 });
 
 // ── Export for Vercel ─────────────────────────────────────────
