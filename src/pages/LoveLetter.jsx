@@ -1,30 +1,24 @@
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { useContent } from '../context/ContentContext';
 import './LoveLetter.css';
 
-const ALL_LINES = [
-    'My Dearest Love,',
-    '',
+const DEFAULT_LINES = [
+    'My Dearest Love,', '',
     'I have tried a thousand times to find the right words —',
     'words worthy of what you mean to me.',
-    'None of them are quite enough.',
-    '',
+    'None of them are quite enough.', '',
     'You are the reason mornings feel like magic.',
     'The reason I smile at absolutely nothing.',
-    'The reason I believe in beautiful, impossible things.',
-    '',
+    'The reason I believe in beautiful, impossible things.', '',
     'You walked into my life as if you had always belonged there,',
-    'and quietly rearranged everything — in the most wonderful way.',
-    '',
+    'and quietly rearranged everything — in the most wonderful way.', '',
     'I love the way you laugh until your eyes crinkle.',
     'The way you say my name.',
-    'The way you make the whole world feel softer somehow.',
-    '',
+    'The way you make the whole world feel softer somehow.', '',
     'If I could write a letter to the universe,',
-    'I\'d simply say: "Thank you for giving me them."',
-    '',
-    'Forever and without conditions —',
-    '',
+    'I\'d simply say: "Thank you for giving me them."', '',
+    'Forever and without conditions —', '',
     'Yours, completely. 💕',
 ];
 
@@ -36,7 +30,9 @@ export default function LoveLetter() {
     const [visibleLines, setVisibleLines] = useState(0);
     const [started, setStarted] = useState(false);
     const [sparkles, setSparkles] = useState([]);
+    const { getJSON } = useContent();
 
+    const ALL_LINES = getJSON('letter_content', DEFAULT_LINES);
     const activeLines = expanded ? ALL_LINES : ALL_LINES.slice(0, PREVIEW_LINE_COUNT);
 
     // type line by line — reset when expanded/collapsed

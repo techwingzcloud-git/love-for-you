@@ -1,6 +1,7 @@
 import { useRef, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ContentProvider } from './context/ContentContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import MusicPlayer from './components/MusicPlayer';
@@ -13,13 +14,15 @@ const Gallery = lazy(() => import('./pages/Gallery'));
 const Memories = lazy(() => import('./pages/Memories'));
 const Surprise = lazy(() => import('./pages/Surprise'));
 const Messages = lazy(() => import('./pages/Messages'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const OurFuture = lazy(() => import('./pages/OurFuture'));
 
 // Loading fallback
 function PageLoader() {
   return (
     <div className="page-loader flex-col-center" style={{ minHeight: '100vh' }}>
-      <span className="animate-pulse-heart" style={{ fontSize: '3rem' }}>💕</span>
-      <p className="text-soft" style={{ marginTop: '1rem' }}>Loading with love…</p>
+      <span className="animate-pulse-heart" style={{ fontSize: '2.5rem' }}>💕</span>
+      <p className="text-soft" style={{ marginTop: '0.8rem' }}>Loading with love…</p>
     </div>
   );
 }
@@ -29,6 +32,15 @@ function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
   if (loading) return <PageLoader />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return children;
+}
+
+// Admin-only route wrapper
+function AdminRoute({ children }) {
+  const { isAuthenticated, isAdmin, loading } = useAuth();
+  if (loading) return <PageLoader />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -76,7 +88,7 @@ function MainContent() {
   );
 }
 
-// Messages page (separate route, not on homepage)
+// Messages page (separate route)
 function MessagesPage() {
   return (
     <>
@@ -88,31 +100,73 @@ function MessagesPage() {
   );
 }
 
+// Admin page (separate route, admin-only)
+function AdminPage() {
+  return (
+    <>
+      <Navbar isMessagesPage />
+      <Suspense fallback={<PageLoader />}>
+        <AdminPanel />
+      </Suspense>
+    </>
+  );
+}
+
+// Our Future page
+function FuturePage() {
+  return (
+    <>
+      <Navbar isMessagesPage />
+      <Suspense fallback={<PageLoader />}>
+        <OurFuture />
+      </Suspense>
+    </>
+  );
+}
+
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<LoginGuard />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <MainContent />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/messages"
-            element={
-              <ProtectedRoute>
-                <MessagesPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <ContentProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<LoginGuard />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <MainContent />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute>
+                  <MessagesPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/our-future"
+              element={
+                <ProtectedRoute>
+                  <FuturePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </ContentProvider>
     </AuthProvider>
   );
 }

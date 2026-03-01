@@ -1,6 +1,6 @@
 /* ============================================================
    Auth Context — Love For You ❤️
-   Global auth state with JWT persistence
+   Manages JWT auth state, user data, and role-based access
    ============================================================ */
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/messageApi';
@@ -12,46 +12,37 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    // Restore session from localStorage on mount
+    // Restore session on mount
     useEffect(() => {
         const token = localStorage.getItem('lfyToken');
-        const saved = localStorage.getItem('lfyUser');
+        const storedUser = localStorage.getItem('lfyUser');
 
-        if (token && saved) {
+        if (token && storedUser) {
             try {
-                setUser(JSON.parse(saved));
+                const parsed = JSON.parse(storedUser);
+                setUser(parsed);
             } catch {
+                localStorage.removeItem('lfyToken');
                 localStorage.removeItem('lfyUser');
             }
-            // Verify token is still valid
-            authApi.getMe()
-                .then(({ data }) => {
-                    setUser(data);
-                    localStorage.setItem('lfyUser', JSON.stringify(data));
-                })
-                .catch(() => {
-                    localStorage.removeItem('lfyToken');
-                    localStorage.removeItem('lfyUser');
-                    setUser(null);
-                })
-                .finally(() => setLoading(false));
-        } else {
-            setLoading(false);
         }
+        setLoading(false);
     }, []);
 
     const login = useCallback(async (email, password) => {
         setError('');
         try {
             const { data } = await authApi.login(email, password);
-            localStorage.setItem('lfyToken', data.token);
-            localStorage.setItem('lfyUser', JSON.stringify(data.user));
-            setUser(data.user);
-            return data.user;
+            const { token, user: userData } = data;
+
+            localStorage.setItem('lfyToken', token);
+            localStorage.setItem('lfyUser', JSON.stringify(userData));
+            setUser(userData);
+            return userData;
         } catch (err) {
             const msg = err.response?.data?.error || 'Login failed. Please try again.';
             setError(msg);
-            throw new Error(msg);
+            throw err;
         }
     }, []);
 
@@ -59,32 +50,32 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('lfyToken');
         localStorage.removeItem('lfyUser');
         setUser(null);
+        setError('');
     }, []);
 
-    const value = {
-        user,
-        loading,
-        error,
-        isAuthenticated: !!user,
-        isAdmin: user?.role === 'admin',
-        login,
-        logout,
-        setError,
-    };
+    const isAuthenticated = !!user;
+    const isAdmin = user?.role === 'admin';
 
     return (
-        <AuthContext.Provider value={value}>
+        <AuthContext.Provider value={{
+            user,
+            loading,
+            error,
+            setError,
+            login,
+            logout,
+            isAuthenticated,
+            isAdmin,
+        }}>
             {children}
         </AuthContext.Provider>
     );
 }
 
-export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
-    return context;
-};
+export function useAuth() {
+    const ctx = useContext(AuthContext);
+    if (!ctx) throw new Error('useAuth must be used within <AuthProvider>');
+    return ctx;
+}
 
 export default AuthContext;

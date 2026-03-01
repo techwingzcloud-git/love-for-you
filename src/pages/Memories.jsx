@@ -1,63 +1,28 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useContent } from '../context/ContentContext';
 import './Memories.css';
 
-const ALL_MEMORIES = [
-    {
-        date: 'The First Hello',
-        emoji: '👋',
-        color: '#ffdce8',
-        border: '#ff85a9',
-        title: 'It Started With a Smile',
-        desc: 'A nervous smile, a bold hello — and suddenly the world felt different. I didn\'t know it yet, but that was the moment my life changed forever.',
-    },
-    {
-        date: 'First Coffee Date',
-        emoji: '☕',
-        color: '#f0e6ff',
-        border: '#c084fc',
-        title: 'Two Hours That Felt Like Minutes',
-        desc: 'We talked about everything and nothing. The coffee went cold. We didn\'t care. That café became our favourite place from that day on.',
-    },
-    {
-        date: 'First Movie Night',
-        emoji: '🍿',
-        color: '#fff0f5',
-        border: '#ff85a9',
-        title: 'We Barely Watched the Movie',
-        desc: 'Blanket forts, terrible popcorn, and so much laughter. We talked all the way through and got shushed twice. Perfect night.',
-    },
-    {
-        date: 'First "I Love You"',
-        emoji: '❤️',
-        color: '#ffdce8',
-        border: '#e83e6c',
-        title: 'Three Words, Infinite Weight',
-        desc: 'It slipped out quietly, somewhere between a laugh and a breath. And the silence after wasn\'t awkward — it was sacred.',
-    },
-    {
-        date: 'Our First Trip',
-        emoji: '✈️',
-        color: '#f0e6ff',
-        border: '#a855f7',
-        title: 'Adventures With You Are Home',
-        desc: 'New city, new memories, same goofy us. Getting lost was the best part — because we were lost together.',
-    },
-    {
-        date: 'Today & Always',
-        emoji: '🌟',
-        color: '#fff0f5',
-        border: '#ffb3cc',
-        title: 'Every Day With You',
-        desc: 'The story is still being written. Every morning we wake up is another chapter I can\'t wait to live. Here\'s to forever. 💕',
-    },
+const DEFAULT_MEMORIES = [
+    { date: 'The First Hello', emoji: '👋', color: '#ffdce8', border: '#ff85a9', title: 'It Started With a Smile', desc: 'A nervous smile, a bold hello — and suddenly the world felt different.' },
+    { date: 'First Coffee Date', emoji: '☕', color: '#f0e6ff', border: '#c084fc', title: 'Two Hours That Felt Like Minutes', desc: 'We talked about everything and nothing. The coffee went cold.' },
+    { date: 'First Movie Night', emoji: '🍿', color: '#fff0f5', border: '#ff85a9', title: 'We Barely Watched the Movie', desc: 'Blanket forts, terrible popcorn, and so much laughter.' },
+    { date: 'First "I Love You"', emoji: '❤️', color: '#ffdce8', border: '#e83e6c', title: 'Three Words, Infinite Weight', desc: 'It slipped out quietly, somewhere between a laugh and a breath.' },
+    { date: 'Our First Trip', emoji: '✈️', color: '#f0e6ff', border: '#a855f7', title: 'Adventures With You Are Home', desc: 'New city, new memories, same goofy us.' },
+    { date: 'Today & Always', emoji: '🌟', color: '#fff0f5', border: '#ffb3cc', title: 'Every Day With You', desc: 'The story is still being written. Here\'s to forever. 💕' },
 ];
 
 const PREVIEW_COUNT = 3;
 
 export default function Memories() {
     const [expanded, setExpanded] = useState(false);
-    const displayed = expanded ? ALL_MEMORIES : ALL_MEMORIES.slice(0, PREVIEW_COUNT);
+    const { getText, getJSON } = useContent();
+
+    const title = getText('memories_title', 'Our Memories 🌸');
+    const subtitle = getText('memories_subtitle', 'A timeline of the moments that stitched our hearts together.');
+    const allMemories = getJSON('memories_items', DEFAULT_MEMORIES);
+
+    const displayed = expanded ? allMemories : allMemories.slice(0, PREVIEW_COUNT);
 
     return (
         <div className="memories page-wrapper bg-pink-dream">
@@ -68,7 +33,7 @@ export default function Memories() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7 }}
                 >
-                    Our Memories 🌸
+                    {title}
                 </motion.h1>
                 <motion.p
                     className="text-soft memories__sub"
@@ -76,7 +41,7 @@ export default function Memories() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.35 }}
                 >
-                    A timeline of the moments that stitched our hearts together.
+                    {subtitle}
                 </motion.p>
             </div>
 
@@ -117,7 +82,7 @@ export default function Memories() {
                     whileTap={{ scale: 0.96 }}
                     id="memories-view-more-btn"
                 >
-                    {expanded ? '💨 Show Less' : `❤️ View More Memories`}
+                    {expanded ? '💨 Show Less' : '❤️ View More Memories'}
                 </motion.button>
             </div>
         </div>

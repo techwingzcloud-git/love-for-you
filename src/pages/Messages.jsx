@@ -16,6 +16,7 @@ export default function Messages() {
     const [partnerOnline, setPartnerOnline] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [sending, setSending] = useState(false);
     const endRef = useRef(null);
     const inputRef = useRef(null);
     const socketRef = useRef(null);
@@ -23,7 +24,9 @@ export default function Messages() {
 
     // Scroll to bottom
     const scrollToBottom = useCallback(() => {
-        endRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+            endRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 50);
     }, []);
 
     // Load partner info and messages
@@ -37,7 +40,6 @@ export default function Messages() {
                 ]);
                 setPartner(partnerRes.data);
                 setMessages(messagesRes.data);
-                // Mark messages as read
                 await messagesApi.markRead().catch(() => { });
             } catch (err) {
                 setError(err.response?.data?.error || 'Failed to load messages. Make sure the server is running.');
@@ -48,7 +50,7 @@ export default function Messages() {
         loadData();
     }, []);
 
-    // Socket.IO connection
+    // Socket.IO connection — FIXED for real-time
     useEffect(() => {
         const token = localStorage.getItem('lfyToken');
         if (!token) return;
@@ -56,18 +58,43 @@ export default function Messages() {
         const socket = io(SOCKET_URL, {
             auth: { token },
             transports: ['websocket', 'polling'],
+            reconnection: true,
+            reconnectionAttempts: 10,
+            reconnectionDelay: 1000,
         });
 
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            console.log('💬 Connected to chat');
+            console.log('💬 Connected to real-time chat');
         });
 
-        socket.on('message:receive', (message) => {
-            setMessages(prev => [...prev, message]);
-            // Mark as read immediately
-            messagesApi.markRead().catch(() => { });
+        // ── REAL-TIME: Receive new messages instantly ──
+        socket.on('message:new', (message) => {
+            setMessages(prev => {
+                // Avoid duplicates
+                if (prev.some(m => m._id === message._id)) return prev;
+                return [...prev, message];
+            });
+            // Mark as read if we're the receiver
+            if (message.receiverId?._id === user?.id || message.receiverId === user?.id) {
+                messagesApi.markRead().catch(() => { });
+                socket.emit('message:read', { messageIds: [message._id] });
+            }
+        });
+
+        // ── Read acknowledgment ──
+        socket.on('message:read_ack', ({ messageIds }) => {
+            setMessages(prev => prev.map(m =>
+                messageIds.includes(m._id) ? { ...m, readStatus: true } : m
+            ));
+        });
+
+        // ── Delivery confirmation ──
+        socket.on('message:delivered', ({ messageId }) => {
+            setMessages(prev => prev.map(m =>
+                m._id === messageId ? { ...m, delivered: true } : m
+            ));
         });
 
         socket.on('typing:show', () => setIsTyping(true));
@@ -79,8 +106,13 @@ export default function Messages() {
             }
         });
 
-        socket.on('connect_error', () => {
-            console.log('Socket connection failed — real-time disabled');
+        socket.on('connect_error', (err) => {
+            console.log('Socket connection issue:', err.message);
+        });
+
+        socket.on('message:error', ({ error: errMsg }) => {
+            setError(errMsg);
+            setSending(false);
         });
 
         return () => {
@@ -93,23 +125,25 @@ export default function Messages() {
         scrollToBottom();
     }, [messages, scrollToBottom]);
 
+    // ── FIXED: Send through Socket.IO for instant delivery ──
     const sendMessage = async () => {
         const text = inputVal.trim();
-        if (!text || !partner) return;
+        if (!text || !partner || sending) return;
+
+        setSending(true);
+        setInputVal('');
+        inputRef.current?.focus();
 
         try {
-            const { data } = await messagesApi.send(partner.id, text);
-            setMessages(prev => [...prev, data]);
-            setInputVal('');
-            inputRef.current?.focus();
-
-            // Emit via socket for real-time
+            // Send via Socket.IO — server saves & broadcasts to both users
             socketRef.current?.emit('message:send', {
                 receiverId: partner.id,
-                message: data,
+                message: text,
             });
         } catch (err) {
             setError('Failed to send message.');
+        } finally {
+            setSending(false);
         }
     };
 
@@ -156,7 +190,7 @@ export default function Messages() {
         return (
             <div className="messages-page page-wrapper bg-pink-dream flex-col-center">
                 <div className="messages-loading">
-                    <span className="animate-pulse-heart" style={{ fontSize: '3rem' }}>💬</span>
+                    <span className="animate-pulse-heart" style={{ fontSize: '2.5rem' }}>💬</span>
                     <p className="text-soft">Loading your messages…</p>
                 </div>
             </div>
@@ -204,7 +238,7 @@ export default function Messages() {
                 <div className="dm-messages" id="dm-messages-area">
                     {messages.length === 0 && !error && (
                         <div className="dm-empty">
-                            <span style={{ fontSize: '3rem' }}>💌</span>
+                            <span style={{ fontSize: '2.5rem' }}>💌</span>
                             <p>No messages yet. Say something sweet!</p>
                         </div>
                     )}
@@ -221,9 +255,9 @@ export default function Messages() {
                                         <motion.div
                                             key={msg._id}
                                             className={`dm-bubble-wrap ${isMe ? 'dm-bubble-wrap--me' : ''}`}
-                                            initial={{ opacity: 0, y: 16, scale: 0.9 }}
+                                            initial={{ opacity: 0, y: 12, scale: 0.92 }}
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
-                                            transition={{ type: 'spring', stiffness: 160, damping: 20 }}
+                                            transition={{ type: 'spring', stiffness: 180, damping: 22 }}
                                         >
                                             {!isMe && (
                                                 <div className="dm-avatar-small">
@@ -283,9 +317,9 @@ export default function Messages() {
                         className="dm-send-btn btn-primary"
                         id="dm-send-btn"
                         onClick={sendMessage}
-                        disabled={!inputVal.trim()}
-                        whileHover={{ scale: 1.08 }}
-                        whileTap={{ scale: 0.9 }}
+                        disabled={!inputVal.trim() || sending}
+                        whileHover={{ scale: 1.06 }}
+                        whileTap={{ scale: 0.92 }}
                         aria-label="Send message"
                     >
                         💌 Send

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useContent } from '../context/ContentContext';
 import './Navbar.css';
 
 const scrollLinks = [
@@ -16,20 +17,23 @@ export default function Navbar({ scrollTo, isMessagesPage }) {
     const [open, setOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [active, setActive] = useState('home');
-    const { user, logout, isAuthenticated } = useAuth();
+    const { user, logout, isAuthenticated, isAdmin } = useAuth();
+    const { getText } = useContent();
     const navigate = useNavigate();
     const location = useLocation();
+
+    const brandText = getText('navbar_brand', 'Love For You');
 
     useEffect(() => {
         if (isMessagesPage) return;
         const onScroll = () => {
-            setScrolled(window.scrollY > 20);
+            setScrolled(window.scrollY > 16);
             const sections = scrollLinks.map(l => document.getElementById(l.key));
             for (let i = sections.length - 1; i >= 0; i--) {
                 const el = sections[i];
                 if (el) {
                     const rect = el.getBoundingClientRect();
-                    if (rect.top <= 120) {
+                    if (rect.top <= 100) {
                         setActive(scrollLinks[i].key);
                         break;
                     }
@@ -45,7 +49,6 @@ export default function Navbar({ scrollTo, isMessagesPage }) {
         setOpen(false);
         if (isMessagesPage) {
             navigate('/');
-            // After navigation, scroll after a brief delay
             setTimeout(() => {
                 document.getElementById(key)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 300);
@@ -54,25 +57,19 @@ export default function Navbar({ scrollTo, isMessagesPage }) {
         }
     };
 
-    const handleMessages = () => {
-        setOpen(false);
-        navigate('/messages');
-    };
-
-    const handleLogout = () => {
-        setOpen(false);
-        logout();
-        navigate('/login');
-    };
+    const handleMessages = () => { setOpen(false); navigate('/messages'); };
+    const handleFuture = () => { setOpen(false); navigate('/our-future'); };
+    const handleAdmin = () => { setOpen(false); navigate('/admin'); };
+    const handleLogout = () => { setOpen(false); logout(); navigate('/login'); };
 
     if (!isAuthenticated) return null;
 
     return (
         <motion.nav
             className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`}
-            initial={{ y: -80 }}
+            initial={{ y: -60 }}
             animate={{ y: 0 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+            transition={{ duration: 0.4, ease: 'easeOut' }}
             role="navigation"
             aria-label="Main navigation"
         >
@@ -80,10 +77,10 @@ export default function Navbar({ scrollTo, isMessagesPage }) {
                 <button
                     className="navbar__brand"
                     onClick={() => handleClick('home')}
-                    aria-label="Love For You — Go to home"
+                    aria-label={`${brandText} — Go to home`}
                 >
                     <span className="brand-heart animate-pulse-heart">❤️</span>
-                    <span className="brand-text">Love For You</span>
+                    <span className="brand-text">{brandText}</span>
                 </button>
 
                 <button
@@ -111,12 +108,30 @@ export default function Navbar({ scrollTo, isMessagesPage }) {
                     ))}
                     <li>
                         <button
-                            className={`navbar__link navbar__link--dm ${isMessagesPage ? 'navbar__link--active' : ''}`}
+                            className={`navbar__link navbar__link--dm ${location.pathname === '/messages' ? 'navbar__link--active' : ''}`}
                             onClick={handleMessages}
                         >
                             💬 Messages
                         </button>
                     </li>
+                    <li>
+                        <button
+                            className={`navbar__link ${location.pathname === '/our-future' ? 'navbar__link--active' : ''}`}
+                            onClick={handleFuture}
+                        >
+                            🔮 Future
+                        </button>
+                    </li>
+                    {isAdmin && (
+                        <li>
+                            <button
+                                className={`navbar__link navbar__link--admin ${location.pathname === '/admin' ? 'navbar__link--active' : ''}`}
+                                onClick={handleAdmin}
+                            >
+                                🛡️ Admin
+                            </button>
+                        </li>
+                    )}
                     <li className="navbar__user-area">
                         <span className="navbar__avatar">{user?.avatar || '💕'}</span>
                         <button className="navbar__link navbar__link--logout" onClick={handleLogout}>
@@ -133,7 +148,7 @@ export default function Navbar({ scrollTo, isMessagesPage }) {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.25 }}
                     >
                         {scrollLinks.map(l => (
                             <li key={l.key}>
@@ -147,12 +162,30 @@ export default function Navbar({ scrollTo, isMessagesPage }) {
                         ))}
                         <li>
                             <button
-                                className={`navbar__link navbar__link--dm ${isMessagesPage ? 'navbar__link--active' : ''}`}
+                                className={`navbar__link navbar__link--dm ${location.pathname === '/messages' ? 'navbar__link--active' : ''}`}
                                 onClick={handleMessages}
                             >
                                 💬 Messages
                             </button>
                         </li>
+                        <li>
+                            <button
+                                className={`navbar__link ${location.pathname === '/our-future' ? 'navbar__link--active' : ''}`}
+                                onClick={handleFuture}
+                            >
+                                🔮 Our Future
+                            </button>
+                        </li>
+                        {isAdmin && (
+                            <li>
+                                <button
+                                    className={`navbar__link navbar__link--admin ${location.pathname === '/admin' ? 'navbar__link--active' : ''}`}
+                                    onClick={handleAdmin}
+                                >
+                                    🛡️ Admin Panel
+                                </button>
+                            </li>
+                        )}
                         <li className="navbar__mobile-user">
                             <span>{user?.avatar} {user?.name}</span>
                             <button className="btn-ghost navbar__logout-btn" onClick={handleLogout}>

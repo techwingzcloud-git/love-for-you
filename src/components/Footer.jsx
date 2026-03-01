@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useContent } from '../context/ContentContext';
 import './Footer.css';
 
 const scrollLinks = [
@@ -12,7 +13,10 @@ const scrollLinks = [
 
 export default function Footer({ scrollTo }) {
     const { isAuthenticated } = useAuth();
+    const { getText } = useContent();
     const navigate = useNavigate();
+
+    const footerText = getText('footer_text', 'Made with 💕 and infinite love · 2026');
 
     if (!isAuthenticated) return null;
 
@@ -21,7 +25,7 @@ export default function Footer({ scrollTo }) {
             <div className="footer__inner container">
                 <p className="footer__brand">
                     <span className="animate-pulse-heart">❤️</span>
-                    &nbsp;Love For You&nbsp;
+                    &nbsp;{getText('navbar_brand', 'Love For You')}&nbsp;
                     <span className="animate-pulse-heart">❤️</span>
                 </p>
                 <nav className="footer__nav" aria-label="Footer navigation">
@@ -35,6 +39,12 @@ export default function Footer({ scrollTo }) {
                         </button>
                     ))}
                     <button
+                        className="footer__link footer__link--future"
+                        onClick={() => navigate('/our-future')}
+                    >
+                        🔮 Future
+                    </button>
+                    <button
                         className="footer__link footer__link--dm"
                         onClick={() => navigate('/messages')}
                     >
@@ -42,7 +52,7 @@ export default function Footer({ scrollTo }) {
                     </button>
                 </nav>
                 <p className="footer__copy">
-                    Made with 💕 and infinite love · 2026
+                    {footerText}
                 </p>
             </div>
         </footer>

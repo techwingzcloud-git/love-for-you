@@ -1,0 +1,62 @@
+[
+  {
+    "_id": "60a5e6ea83ce70f6f7663fd4",
+    "type": "game",
+    "title": "Love Quiz",
+    "description": "How well do you know each other? Take the ultimate love quiz!",
+    "emoji": "🎯",
+    "enabled": true,
+    "createdAt": "2026-03-01T05:02:46.264Z",
+    "updatedAt": "2026-03-01T05:02:46.264Z"
+  },
+  {
+    "_id": "6ec344f10633780c25d7f71a",
+    "type": "game",
+    "title": "Truth or Dare",
+    "description": "Romantic truth or dare — only for the brave-hearted lovers!",
+    "emoji": "🎲",
+    "enabled": true,
+    "createdAt": "2026-03-01T05:02:46.267Z",
+    "updatedAt": "2026-03-01T05:02:46.267Z"
+  },
+  {
+    "_id": "018a183be51d66a73aab0d14",
+    "type": "dare",
+    "title": "Write a Poem",
+    "description": "Write a 4-line love poem for your partner right now!",
+    "emoji": "✍️",
+    "enabled": true,
+    "createdAt": "2026-03-01T05:02:46.269Z",
+    "updatedAt": "2026-03-01T05:02:46.269Z"
+  },
+  {
+    "_id": "d14b140410e64e6fe2ee8167",
+    "type": "dare",
+    "title": "Surprise Call",
+    "description": "Call your partner right now and say the sweetest thing!",
+    "emoji": "📞",
+    "enabled": true,
+    "createdAt": "2026-03-01T05:02:46.272Z",
+    "updatedAt": "2026-03-01T05:02:46.272Z"
+  },
+  {
+    "_id": "c7e7ee02908048fda22e857c",
+    "type": "surprise",
+    "title": "Mystery Date Night",
+    "description": "Plan a surprise date night — no peeking at the plan!",
+    "emoji": "🌙",
+    "enabled": true,
+    "createdAt": "2026-03-01T05:02:46.274Z",
+    "updatedAt": "2026-03-01T05:02:46.274Z"
+  },
+  {
+    "_id": "950e3b75d328141db692b97f",
+    "type": "surprise",
+    "title": "Love Jar",
+    "description": "Write 10 reasons why you love them and put them in a jar!",
+    "emoji": "🫙",
+    "enabled": true,
+    "createdAt": "2026-03-01T05:02:46.277Z",
+    "updatedAt": "2026-03-01T05:02:46.277Z"
+  }
+]

@@ -25,5 +25,14 @@
     "readStatus": false,
     "createdAt": "2026-02-26T17:38:42.487Z",
     "updatedAt": "2026-02-26T17:38:42.487Z"
+  },
+  {
+    "_id": "a8d6e83ac55a637d3be78db6",
+    "senderId": "7ab1fcfcbef11ba6ff118f83",
+    "receiverId": "0225bb9ae7e961024d031c97",
+    "message": "that is my message",
+    "readStatus": false,
+    "createdAt": "2026-03-01T05:28:47.434Z",
+    "updatedAt": "2026-03-01T05:28:47.434Z"
   }
 ]

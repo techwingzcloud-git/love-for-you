@@ -1,6 +1,7 @@
 /* ============================================================
    Vercel Serverless API — Love For You ❤️
    All backend routes in one serverless function
+   Includes: Auth, Messages, Content CMS, Our Future
    ============================================================ */
 import express from 'express';
 import cors from 'cors';
@@ -54,8 +55,23 @@ const messageSchema = new mongoose.Schema({
 
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
 
+const contentSchema = new mongoose.Schema({
+    key: { type: String, required: true, unique: true },
+    value: { type: mongoose.Schema.Types.Mixed, required: true },
+}, { timestamps: true });
+
+const futureSchema = new mongoose.Schema({
+    type: { type: String, enum: ['game', 'dare', 'surprise'], required: true },
+    title: { type: String, required: true, trim: true },
+    description: { type: String, default: '' },
+    emoji: { type: String, default: '✨' },
+    enabled: { type: Boolean, default: true },
+}, { timestamps: true });
+
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
+const Content = mongoose.models.Content || mongoose.model('Content', contentSchema);
+const Future = mongoose.models.Future || mongoose.model('Future', futureSchema);
 
 // ── JWT helpers ───────────────────────────────────────────────
 const generateToken = (userId) =>
@@ -75,6 +91,13 @@ const protect = async (req, res, next) => {
     }
 };
 
+const adminOnly = (req, res, next) => {
+    if (req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required.' });
+    }
+    next();
+};
+
 // ── Middleware ─────────────────────────────────────────────────
 app.use(cors({
     origin: (origin, cb) => {
@@ -82,7 +105,7 @@ app.use(cors({
             origin.includes('localhost') || origin.includes('127.0.0.1')) {
             return cb(null, true);
         }
-        cb(null, true); // Allow all for now — private app
+        cb(null, true);
     },
     credentials: true,
 }));
@@ -124,9 +147,51 @@ async function autoSeed() {
     console.log('🎉 Users seeded!');
 }
 
-// ── AUTH ROUTES ───────────────────────────────────────────────
+// Seed default content
+let contentSeeded = false;
+async function seedContent() {
+    if (contentSeeded) return;
+    const count = await Content.countDocuments();
+    if (count > 0) { contentSeeded = true; return; }
 
-// POST /api/auth/login
+    const defaults = [
+        { key: 'navbar_brand', value: 'Love For You' },
+        { key: 'home_title', value: 'Love For You ❤️' },
+        { key: 'home_subtitle', value: 'This little corner of the internet was built with nothing but love, late nights, and a heart full of you.' },
+        { key: 'about_title', value: 'Our Love Story 💕' },
+        { key: 'gallery_title', value: 'Our Gallery 📸' },
+        { key: 'memories_title', value: 'Our Memories 🌸' },
+        { key: 'surprise_title', value: 'Our forever is just beginning… ❤️' },
+    ];
+
+    await Content.insertMany(defaults);
+    contentSeeded = true;
+}
+
+// Seed default future items
+let futureSeeded = false;
+async function seedFuture() {
+    if (futureSeeded) return;
+    const count = await Future.countDocuments();
+    if (count > 0) { futureSeeded = true; return; }
+
+    const defaults = [
+        { type: 'game', title: 'Love Quiz', description: 'How well do you know each other?', emoji: '🎯', enabled: true },
+        { type: 'game', title: 'Truth or Dare', description: 'Romantic truth or dare!', emoji: '🎲', enabled: true },
+        { type: 'dare', title: 'Write a Poem', description: 'Write a 4-line love poem right now!', emoji: '✍️', enabled: true },
+        { type: 'dare', title: 'Surprise Call', description: 'Call and say the sweetest thing!', emoji: '📞', enabled: true },
+        { type: 'surprise', title: 'Mystery Date Night', description: 'Plan a surprise date!', emoji: '🌙', enabled: true },
+        { type: 'surprise', title: 'Love Jar', description: 'Write 10 reasons why you love them!', emoji: '🫙', enabled: true },
+    ];
+
+    await Future.insertMany(defaults);
+    futureSeeded = true;
+}
+
+// ═══════════════════════════════════════════════
+// AUTH ROUTES
+// ═══════════════════════════════════════════════
+
 app.post('/api/auth/login', async (req, res) => {
     try {
         await autoSeed();
@@ -149,7 +214,6 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// GET /api/auth/me
 app.get('/api/auth/me', protect, async (req, res) => {
     res.json({
         id: req.user._id, name: req.user.name, email: req.user.email,
@@ -157,16 +221,16 @@ app.get('/api/auth/me', protect, async (req, res) => {
     });
 });
 
-// GET /api/auth/partner
 app.get('/api/auth/partner', protect, async (req, res) => {
     const partner = await User.findOne({ _id: { $ne: req.user._id } });
     if (!partner) return res.status(404).json({ error: 'Partner not found.' });
     res.json({ id: partner._id, name: partner.name, avatar: partner.avatar });
 });
 
-// ── MESSAGE ROUTES ────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// MESSAGE ROUTES
+// ═══════════════════════════════════════════════
 
-// GET /api/messages
 app.get('/api/messages', protect, async (req, res) => {
     try {
         const messages = await Message.find({
@@ -182,7 +246,6 @@ app.get('/api/messages', protect, async (req, res) => {
     }
 });
 
-// POST /api/messages
 app.post('/api/messages', protect, async (req, res) => {
     try {
         const { receiverId, message } = req.body;
@@ -206,19 +269,16 @@ app.post('/api/messages', protect, async (req, res) => {
     }
 });
 
-// PATCH /api/messages/read
 app.patch('/api/messages/read', protect, async (req, res) => {
     await Message.updateMany({ receiverId: req.user._id, readStatus: false }, { readStatus: true });
     res.json({ success: true });
 });
 
-// GET /api/messages/unread
 app.get('/api/messages/unread', protect, async (req, res) => {
     const count = await Message.countDocuments({ receiverId: req.user._id, readStatus: false });
     res.json({ count });
 });
 
-// DELETE /api/messages/:id
 app.delete('/api/messages/:id', protect, async (req, res) => {
     const msg = await Message.findById(req.params.id);
     if (!msg) return res.status(404).json({ error: 'Not found.' });
@@ -227,7 +287,113 @@ app.delete('/api/messages/:id', protect, async (req, res) => {
     res.json({ success: true });
 });
 
-// GET /api/health
+// ═══════════════════════════════════════════════
+// ADMIN CONTENT ROUTES (CMS)
+// ═══════════════════════════════════════════════
+
+app.get('/api/content', protect, adminOnly, async (req, res) => {
+    try {
+        await seedContent();
+        const content = await Content.find();
+        const contentMap = {};
+        content.forEach(c => { contentMap[c.key] = c; });
+        res.json(contentMap);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch content.' });
+    }
+});
+
+app.put('/api/content/:key', protect, adminOnly, async (req, res) => {
+    try {
+        const { key } = req.params;
+        const { value } = req.body;
+        if (value === undefined) return res.status(400).json({ error: 'Value is required.' });
+
+        const updated = await Content.findOneAndUpdate(
+            { key },
+            { value },
+            { upsert: true, new: true }
+        );
+        res.json(updated);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update content.' });
+    }
+});
+
+// ═══════════════════════════════════════════════
+// ADMIN FUTURE ROUTES
+// ═══════════════════════════════════════════════
+
+app.get('/api/content/future', protect, adminOnly, async (req, res) => {
+    try {
+        await seedFuture();
+        const items = await Future.find().sort({ createdAt: -1 });
+        res.json(items);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch future items.' });
+    }
+});
+
+app.post('/api/content/future', protect, adminOnly, async (req, res) => {
+    try {
+        const { type, title, description, emoji, enabled } = req.body;
+        if (!type || !title) return res.status(400).json({ error: 'Type and title required.' });
+        const item = await Future.create({ type, title, description, emoji, enabled });
+        res.status(201).json(item);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create future item.' });
+    }
+});
+
+app.put('/api/content/future/:id', protect, adminOnly, async (req, res) => {
+    try {
+        const item = await Future.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (!item) return res.status(404).json({ error: 'Item not found.' });
+        res.json(item);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update future item.' });
+    }
+});
+
+app.delete('/api/content/future/:id', protect, adminOnly, async (req, res) => {
+    try {
+        const item = await Future.findByIdAndDelete(req.params.id);
+        if (!item) return res.status(404).json({ error: 'Item not found.' });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete future item.' });
+    }
+});
+
+// ═══════════════════════════════════════════════
+// PUBLIC CONTENT ROUTES (read-only for users)
+// ═══════════════════════════════════════════════
+
+app.get('/api/public/content', protect, async (req, res) => {
+    try {
+        const content = await Content.find();
+        const contentMap = {};
+        content.forEach(c => { contentMap[c.key] = c.value; });
+        res.json(contentMap);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch content.' });
+    }
+});
+
+app.get('/api/public/future', protect, async (req, res) => {
+    try {
+        await seedFuture();
+        const items = await Future.find({ enabled: true }).sort({ createdAt: -1 });
+        res.json(items);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch future items.' });
+    }
+});
+
+// ═══════════════════════════════════════════════
+// HEALTH CHECK
+// ═══════════════════════════════════════════════
+
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', message: '💕 Love For You API is running!' });
 });

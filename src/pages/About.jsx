@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import HeartAnimation from '../components/HeartAnimation';
+import { useContent } from '../context/ContentContext';
 import './About.css';
 
-const PREVIEW_BLOCKS = [
-    { side: 'left', emoji: '🌷', title: 'How It Began', text: 'It started with something so simple — a glance, a smile, a "hey". Neither of us knew that tiny moment would change everything. The universe quietly conspired to bring two hearts together, and somehow, impossibly, it worked.' },
-    { side: 'right', emoji: '💫', title: 'Falling Together', text: 'We fell slowly, then all at once. Long late-night calls, silly memes, inside jokes that no one else would understand. We built a world of our own — warm, safe, and overflowing with laughter.' },
+const DEFAULT_BLOCKS = [
+    { side: 'left', emoji: '🌷', title: 'How It Began', text: 'It started with something so simple — a glance, a smile, a "hey". Neither of us knew that tiny moment would change everything.' },
+    { side: 'right', emoji: '💫', title: 'Falling Together', text: 'We fell slowly, then all at once. Long late-night calls, silly memes, inside jokes that no one else would understand.' },
+    { side: 'left', emoji: '🌸', title: 'What You Mean to Me', text: 'You are the calm in my storm, the answer to questions I hadn\'t yet asked.' },
+    { side: 'right', emoji: '❤️', title: 'Our Future', text: 'Adventures unplanned, sunsets unshared, laughter yet to echo — so much still to come.' },
 ];
 
-const MORE_BLOCKS = [
-    { side: 'left', emoji: '🌸', title: 'What You Mean to Me', text: 'You are the calm in my storm, the answer to questions I hadn\'t yet asked. You make ordinary days extraordinary just by being in them. I choose you — every single morning, and twice on the hard days.' },
-    { side: 'right', emoji: '❤️', title: 'Our Future', text: 'Adventures unplanned, sunsets unshared, laughter yet to echo — so much still to come. But whatever lies ahead, I know one thing with absolute certainty: I want all of it, and all of it, I want with you.' },
-];
-
-const milestones = [
+const DEFAULT_MILESTONES = [
     { icon: '👀', date: 'Day One', text: 'The moment our eyes met — the world slowed down.' },
     { icon: '💬', date: 'First Texts', text: 'Messages that started casual and turned into something magical.' },
     { icon: '☕', date: 'First Date', text: 'Coffee, butterflies, and smiles that wouldn\'t stop.' },
@@ -29,6 +27,15 @@ const expandVariants = {
 
 export default function About() {
     const [expanded, setExpanded] = useState(false);
+    const { getText, getJSON } = useContent();
+
+    const title = getText('about_title', 'Our Love Story 💕');
+    const subtitle = getText('about_subtitle', 'Every great love story has a beginning. Here\'s ours — clumsy, beautiful, and completely unforgettable.');
+    const allBlocks = getJSON('about_blocks', DEFAULT_BLOCKS);
+    const milestones = getJSON('about_milestones', DEFAULT_MILESTONES);
+
+    const previewBlocks = allBlocks.slice(0, 2);
+    const moreBlocks = allBlocks.slice(2);
 
     return (
         <div className="about page-wrapper bg-lav-dream">
@@ -42,7 +49,7 @@ export default function About() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.7 }}
                 >
-                    Our Love Story 💕
+                    {title}
                 </motion.h1>
                 <motion.p
                     className="text-soft about__sub"
@@ -50,14 +57,14 @@ export default function About() {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.25 }}
                 >
-                    Every great love story has a beginning. Here's ours — clumsy, beautiful, and completely unforgettable.
+                    {subtitle}
                 </motion.p>
             </div>
 
             <div className="about__content container">
                 <div className="about__story">
                     {/* ── Always-visible preview blocks ─── */}
-                    {PREVIEW_BLOCKS.map((s, i) => (
+                    {previewBlocks.map((s, i) => (
                         <motion.div
                             key={i}
                             className={`about__block about__block--${s.side} card-soft`}
@@ -84,7 +91,7 @@ export default function About() {
                                 exit="exit"
                                 className="about__expand-section"
                             >
-                                {MORE_BLOCKS.map((s, i) => (
+                                {moreBlocks.map((s, i) => (
                                     <div
                                         key={i}
                                         className={`about__block about__block--${s.side} card-soft`}

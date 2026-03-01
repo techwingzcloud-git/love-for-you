@@ -1,36 +1,29 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useContent } from '../context/ContentContext';
 import './Surprise.css';
 
 const CHAR_EMOJIS = ['❤️', '💕', '🩷', '💖', '💗', '🌸', '✨', '💫', '🌷', '🎉', '🎊', '⭐'];
+const SPARKLES = ['✨', '🌸', '💖', '⭐', '🌟', '💫', '🌷', '💕'];
 
-const LETTER_LINES = [
-    'My Dearest Love,',
-    '',
+const DEFAULT_LETTER = [
+    'My Dearest Love,', '',
     'I have tried a thousand times to find the right words —',
     'words worthy of what you mean to me.',
-    'None of them are quite enough.',
-    '',
+    'None of them are quite enough.', '',
     'You are the reason mornings feel like magic.',
     'The reason I smile at absolutely nothing.',
-    'The reason I believe in beautiful, impossible things.',
-    '',
+    'The reason I believe in beautiful, impossible things.', '',
     'You walked into my life as if you had always belonged there,',
-    'and quietly rearranged everything — in the most wonderful way.',
-    '',
+    'and quietly rearranged everything — in the most wonderful way.', '',
     'I love the way you laugh until your eyes crinkle.',
     'The way you say my name.',
-    'The way you make the whole world feel softer somehow.',
-    '',
+    'The way you make the whole world feel softer somehow.', '',
     'If I could write a letter to the universe,',
-    'I\'d simply say: "Thank you for giving me them."',
-    '',
-    'Forever and without conditions —',
-    '',
+    'I\'d simply say: "Thank you for giving me them."', '',
+    'Forever and without conditions —', '',
     'Yours, completely. 💕',
 ];
-
-const SPARKLES = ['✨', '🌸', '💖', '⭐', '🌟', '💫', '🌷', '💕'];
 
 function generateConfetti(count = 80) {
     return Array.from({ length: count }, (_, i) => ({
@@ -51,6 +44,11 @@ export default function Surprise({ scrollTo }) {
     const [visibleLines, setVisibleLines] = useState(0);
     const [letterStarted, setLetterStarted] = useState(false);
     const [sparkles, setSparkles] = useState([]);
+    const { getText, getJSON } = useContent();
+
+    const surpriseTitle = getText('surprise_title', 'Our forever is just beginning… ❤️');
+    const surpriseMessage = getText('surprise_message', 'No matter how many pages, songs, or years pass — I will choose you every single time. You are my beginning, my middle, and every beautiful ending I dare to imagine. This isn\'t just a website. This is my heart, dressed up in pixels, whispering: I love you.');
+    const letterLines = getJSON('letter_content', DEFAULT_LETTER);
 
     useEffect(() => {
         const t1 = setTimeout(() => setShowMsg(true), 900);
@@ -61,11 +59,11 @@ export default function Surprise({ scrollTo }) {
     // Letter typewriter effect
     useEffect(() => {
         if (!letterStarted) return;
-        if (visibleLines >= LETTER_LINES.length) return;
-        const delay = LETTER_LINES[visibleLines] === '' ? 350 : 750;
+        if (visibleLines >= letterLines.length) return;
+        const delay = letterLines[visibleLines] === '' ? 350 : 750;
         const t = setTimeout(() => setVisibleLines(v => v + 1), delay);
         return () => clearTimeout(t);
-    }, [letterStarted, visibleLines]);
+    }, [letterStarted, visibleLines, letterLines]);
 
     // Sparkle generator for letter
     useEffect(() => {
@@ -144,7 +142,7 @@ export default function Surprise({ scrollTo }) {
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ duration: 0.8, delay: 0.25, type: 'spring', stiffness: 100 }}
                         >
-                            Our forever is just beginning…&nbsp;❤️
+                            {surpriseTitle}
                         </motion.h1>
 
                         <motion.p
@@ -153,11 +151,7 @@ export default function Surprise({ scrollTo }) {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.55, duration: 0.8 }}
                         >
-                            No matter how many pages, songs, or years pass — I will choose
-                            you every single time. You are my beginning, my middle, and every
-                            beautiful ending I dare to imagine. This isn't just a website.
-                            This is my heart, dressed up in pixels, whispering:&nbsp;
-                            <em>I love you</em>.
+                            {surpriseMessage}
                         </motion.p>
 
                         <motion.div
@@ -234,10 +228,10 @@ export default function Surprise({ scrollTo }) {
                             <div className="letter-ribbon">✉️ A letter from the heart</div>
 
                             <div className="letter-lines">
-                                {LETTER_LINES.slice(0, visibleLines).map((line, i) => (
+                                {letterLines.slice(0, visibleLines).map((line, i) => (
                                     <motion.p
                                         key={i}
-                                        className={`letter-line ${line === '' ? 'letter-line--empty' : ''} ${i === 0 ? 'letter-line--greeting' : ''} ${i === LETTER_LINES.length - 1 ? 'letter-line--sign' : ''}`}
+                                        className={`letter-line ${line === '' ? 'letter-line--empty' : ''} ${i === 0 ? 'letter-line--greeting' : ''} ${i === letterLines.length - 1 ? 'letter-line--sign' : ''}`}
                                         initial={{ opacity: 0, x: -16 }}
                                         animate={{ opacity: 1, x: 0 }}
                                         transition={{ duration: 0.4 }}
@@ -246,12 +240,12 @@ export default function Surprise({ scrollTo }) {
                                     </motion.p>
                                 ))}
 
-                                {visibleLines < LETTER_LINES.length && letterStarted && (
+                                {visibleLines < letterLines.length && letterStarted && (
                                     <span className="letter-cursor" aria-hidden="true">|</span>
                                 )}
                             </div>
 
-                            {visibleLines >= LETTER_LINES.length && (
+                            {visibleLines >= letterLines.length && (
                                 <motion.p
                                     className="letter-done"
                                     initial={{ opacity: 0 }}

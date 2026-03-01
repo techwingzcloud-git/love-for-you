@@ -9,29 +9,29 @@
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 440px;
-    padding: 2rem 1.5rem;
+    max-width: 420px;
+    padding: 1.5rem 1.2rem;
 }
 
 .login__card {
     width: 100%;
-    padding: 2.5rem 2.5rem 2rem;
+    padding: 2rem 2rem 1.5rem;
     text-align: center;
 }
 
 .login__header {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 .login__heart {
     display: inline-block;
-    font-size: 3.5rem;
-    margin-bottom: 0.5rem;
+    font-size: 2.8rem;
+    margin-bottom: 0.3rem;
 }
 
 .login__title {
-    font-size: clamp(1.8rem, 5vw, 2.5rem);
-    margin-bottom: 0.4rem;
+    font-size: clamp(1.5rem, 4.5vw, 2rem);
+    margin-bottom: 0.3rem;
     background: linear-gradient(135deg, #e83e6c 30%, #a855f7 80%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -39,47 +39,98 @@
 }
 
 .login__subtitle {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
 }
 
+/* ── Role selection cards ─── */
+.login__role-select {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.login__role-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 1.2rem 1rem;
+    border-radius: 1rem;
+    border: 1.5px solid rgba(255, 133, 169, 0.3);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    transition: all 0.25s ease;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+}
+
+.login__role-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(232, 62, 108, 0.15);
+    border-color: rgba(255, 133, 169, 0.5);
+}
+
+.login__role-btn--admin:hover {
+    border-color: rgba(168, 85, 247, 0.5);
+    box-shadow: 0 8px 30px rgba(168, 85, 247, 0.15);
+}
+
+.login__role-icon {
+    font-size: 2rem;
+}
+
+.login__role-label {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #3d1a2e;
+}
+
+.login__role-desc {
+    font-size: 0.75rem;
+    color: #9b6b8a;
+    font-weight: 400;
+}
+
+/* ── Form ─── */
 .login__form {
     display: flex;
     flex-direction: column;
-    gap: 1.2rem;
+    gap: 1rem;
 }
 
 .login__error {
     background: rgba(232, 62, 108, 0.08);
-    border: 1.5px solid rgba(232, 62, 108, 0.25);
+    border: 1px solid rgba(232, 62, 108, 0.2);
     color: #c0294e;
-    font-size: 0.88rem;
+    font-size: 0.8rem;
     font-weight: 500;
-    padding: 0.7rem 1rem;
-    border-radius: 12px;
+    padding: 0.55rem 0.8rem;
+    border-radius: 10px;
     text-align: left;
 }
 
 .login__field {
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.3rem;
     text-align: left;
 }
 
 .login__label {
-    font-size: 0.82rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: #6b3a5a;
     letter-spacing: 0.03em;
 }
 
 .login__input {
-    padding: 0.8rem 1rem;
-    border: 1.5px solid rgba(255, 133, 169, 0.35);
-    border-radius: 12px;
+    padding: 0.65rem 0.85rem;
+    border: 1.5px solid rgba(255, 133, 169, 0.3);
+    border-radius: 10px;
     background: rgba(255, 255, 255, 0.8);
     font-family: 'Poppins', sans-serif;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     color: #3d1a2e;
     outline: none;
     transition: border-color 0.25s, box-shadow 0.25s;
@@ -88,7 +139,7 @@
 
 .login__input:focus {
     border-color: #ff85a9;
-    box-shadow: 0 0 0 3px rgba(255, 133, 169, 0.15);
+    box-shadow: 0 0 0 2px rgba(255, 133, 169, 0.12);
 }
 
 .login__input::placeholder {
@@ -100,26 +151,26 @@
 }
 
 .login__password-wrap .login__input {
-    padding-right: 3rem;
+    padding-right: 2.8rem;
 }
 
 .login__toggle-pw {
     position: absolute;
-    right: 0.7rem;
+    right: 0.6rem;
     top: 50%;
     transform: translateY(-50%);
     background: none;
-    font-size: 1.1rem;
-    padding: 0.2rem;
+    font-size: 1rem;
+    padding: 0.15rem;
     line-height: 1;
 }
 
 .login__submit {
     width: 100%;
     justify-content: center;
-    margin-top: 0.5rem;
-    padding: 0.9rem 2rem;
-    font-size: 1.05rem;
+    margin-top: 0.3rem;
+    padding: 0.75rem 1.8rem;
+    font-size: 0.92rem;
 }
 
 .login__submit:disabled {
@@ -127,34 +178,58 @@
     cursor: not-allowed;
 }
 
+.login__back-btn {
+    margin-top: 0.8rem;
+    background: none;
+    color: #9b6b8a;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.3rem 0.5rem;
+    border-radius: 6px;
+    transition: color 0.2s;
+    font-family: 'Poppins', sans-serif;
+}
+
+.login__back-btn:hover {
+    color: #e83e6c;
+}
+
 .login__note {
-    margin-top: 1.5rem;
-    font-size: 0.8rem;
+    margin-top: 1.2rem;
+    font-size: 0.72rem;
     color: #9b6b8a;
 }
 
 /* ── Responsive ─── */
 @media (max-width: 500px) {
     .login__card {
-        padding: 2rem 1.5rem 1.5rem;
+        padding: 1.5rem 1.2rem 1.2rem;
     }
 
     .login__heart {
-        font-size: 2.8rem;
+        font-size: 2.2rem;
     }
 
     .login__input {
-        font-size: 0.9rem;
-        padding: 0.7rem 0.9rem;
+        font-size: 0.82rem;
+        padding: 0.55rem 0.75rem;
+    }
+
+    .login__role-btn {
+        padding: 1rem 0.8rem;
+    }
+
+    .login__role-icon {
+        font-size: 1.6rem;
     }
 }
 
 @media (max-width: 380px) {
     .login__container {
-        padding: 1rem 0.8rem;
+        padding: 0.8rem 0.6rem;
     }
 
     .login__card {
-        padding: 1.5rem 1.2rem;
+        padding: 1.2rem 0.9rem;
     }
 }

@@ -1,0 +1,174 @@
+/* ═══════════════════════════════════════════════
+   Our Future Page — Love For You ❤️
+   Dynamic expandable cards
+   ═══════════════════════════════════════════════ */
+
+.future-page {
+    min-height: 100vh;
+    padding-bottom: 2rem;
+}
+
+.future-container {
+    padding-top: 5rem;
+    padding-bottom: 3rem;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Header ─── */
+.future-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.future-header .dm-back {
+    margin-bottom: 0.8rem;
+}
+
+.future-title {
+    background: linear-gradient(135deg, #e83e6c 20%, #a855f7 80%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.4rem;
+}
+
+.future-subtitle {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* ── Filters ─── */
+.future-filters {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.future-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #6b3a5a;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 180, 200, 0.25);
+    backdrop-filter: blur(8px);
+    transition: all 0.2s;
+    font-family: 'Poppins', sans-serif;
+}
+
+.future-filter:hover {
+    background: rgba(255, 133, 169, 0.1);
+    border-color: rgba(255, 133, 169, 0.4);
+}
+
+.future-filter--active {
+    background: linear-gradient(135deg, rgba(232, 62, 108, 0.1), rgba(168, 85, 247, 0.1));
+    border-color: rgba(232, 62, 108, 0.3);
+    color: #e83e6c;
+}
+
+.future-filter__count {
+    background: rgba(232, 62, 108, 0.12);
+    color: #e83e6c;
+    font-size: 0.65rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 9999px;
+    font-weight: 700;
+}
+
+/* ── Grid ─── */
+.future-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.8rem;
+}
+
+/* ── Cards ─── */
+.future-card {
+    padding: 1rem 1.2rem;
+    transition: all 0.25s ease;
+}
+
+.future-card__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+}
+
+.future-card__emoji {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+.future-card__type {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.future-card__title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #3d1a2e;
+    margin-bottom: 0.3rem;
+}
+
+.future-card__body {
+    overflow: hidden;
+}
+
+.future-card__body .text-soft {
+    font-size: 0.8rem;
+    padding-top: 0.3rem;
+}
+
+.future-card__expand-hint {
+    display: block;
+    text-align: center;
+    font-size: 0.65rem;
+    color: #c084fc;
+    margin-top: 0.4rem;
+    font-weight: 500;
+}
+
+/* ── Empty ─── */
+.future-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+/* ── Responsive ─── */
+@media (max-width: 600px) {
+    .future-container {
+        padding-top: 4rem;
+    }
+
+    .future-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .future-filters {
+        gap: 0.3rem;
+    }
+
+    .future-filter {
+        font-size: 0.72rem;
+        padding: 0.35rem 0.7rem;
+    }
+}

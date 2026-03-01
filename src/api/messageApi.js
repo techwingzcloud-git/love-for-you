@@ -60,6 +60,26 @@ export const messagesApi = {
     delete: (id) => api.delete(`/messages/${id}`),
 };
 
+// ── Admin Content API (CMS) ───────────────────────────────────
+export const contentApi = {
+    getAll: () => api.get('/content'),
+    update: (key, value) => api.put(`/content/${key}`, { value }),
+    upload: (formData) => api.post('/content/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+    // Future items
+    getFuture: () => api.get('/content/future'),
+    addFuture: (item) => api.post('/content/future', item),
+    updateFuture: (id, item) => api.put(`/content/future/${id}`, item),
+    deleteFuture: (id) => api.delete(`/content/future/${id}`),
+};
+
+// ── Public Content API (read-only for any authenticated user) ──
+export const publicApi = {
+    getContent: () => api.get('/public/content'),
+    getFuture: () => api.get('/public/future'),
+};
+
 // ── Health API ────────────────────────────────────────────────
 export const healthApi = {
     check: () => api.get('/health'),

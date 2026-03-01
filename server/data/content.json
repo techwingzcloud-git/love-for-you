@@ -1,0 +1,149 @@
+[
+  {
+    "_id": "d065a57dc0047b6268ae57e0",
+    "key": "navbar_brand",
+    "value": "Love For You",
+    "createdAt": "2026-03-01T05:46:08.763Z",
+    "updatedAt": "2026-03-01T05:46:08.763Z"
+  },
+  {
+    "_id": "e78352edfd9fb5ba6f8bb19b",
+    "key": "home_title",
+    "value": "Love For You ",
+    "createdAt": "2026-03-01T05:46:08.764Z",
+    "updatedAt": "2026-03-01T06:14:20.215Z"
+  },
+  {
+    "_id": "9c4c5c31d9c0ab1bb8a37fa7",
+    "key": "home_subtitle",
+    "value": "This little corner of the internet was built with nothing but love, late nights, and a heart full of you.",
+    "createdAt": "2026-03-01T05:46:08.764Z",
+    "updatedAt": "2026-03-01T05:46:08.764Z"
+  },
+  {
+    "_id": "8565a56f6bba5ba6640f661b",
+    "key": "home_taglines",
+    "value": "[\"Every moment with you is a poem 🌸\",\"You are my favourite daydream 💭\",\"In your arms, I found my home 🏡\",\"With you, every second sparkles ✨\"]",
+    "createdAt": "2026-03-01T05:46:08.765Z",
+    "updatedAt": "2026-03-01T05:46:08.765Z"
+  },
+  {
+    "_id": "cf8720cf5758e460c0ab696e",
+    "key": "home_cta",
+    "value": "Start Our Journey 💕",
+    "createdAt": "2026-03-01T05:46:08.766Z",
+    "updatedAt": "2026-03-01T05:46:08.766Z"
+  },
+  {
+    "_id": "7c2cad02ac563aa906b75d09",
+    "key": "about_title",
+    "value": "Our Love Story 💕",
+    "createdAt": "2026-03-01T05:46:08.766Z",
+    "updatedAt": "2026-03-01T05:46:08.766Z"
+  },
+  {
+    "_id": "90dd2046de7453977170efe7",
+    "key": "about_subtitle",
+    "value": "Every great love story has a beginning. Here's ours — clumsy, beautiful, and completely unforgettable.",
+    "createdAt": "2026-03-01T05:46:08.767Z",
+    "updatedAt": "2026-03-01T05:46:08.767Z"
+  },
+  {
+    "_id": "9697c80e6c9d430ec0ab8a70",
+    "key": "about_blocks",
+    "value": "[{\"side\":\"left\",\"emoji\":\"🌷\",\"title\":\"How It Began\",\"text\":\"It started with something so simple — a glance, a smile, a \\\"hey\\\". Neither of us knew that tiny moment would change everything. The universe quietly conspired to bring two hearts together, and somehow, impossibly, it worked.\"},{\"side\":\"right\",\"emoji\":\"💫\",\"title\":\"Falling Together\",\"text\":\"We fell slowly, then all at once. Long late-night calls, silly memes, inside jokes that no one else would understand. We built a world of our own — warm, safe, and overflowing with laughter.\"},{\"side\":\"left\",\"emoji\":\"🌸\",\"title\":\"What You Mean to Me\",\"text\":\"You are the calm in my storm, the answer to questions I hadn't yet asked. You make ordinary days extraordinary just by being in them. I choose you — every single morning, and twice on the hard days.\"},{\"side\":\"right\",\"emoji\":\"❤️\",\"title\":\"Our Future\",\"text\":\"Adventures unplanned, sunsets unshared, laughter yet to echo — so much still to come. But whatever lies ahead, I know one thing with absolute certainty: I want all of it, and all of it, I want with you.\"}]",
+    "createdAt": "2026-03-01T05:46:08.767Z",
+    "updatedAt": "2026-03-01T05:46:08.767Z"
+  },
+  {
+    "_id": "c41f0b3f88cb61197ac0dfe7",
+    "key": "about_milestones",
+    "value": "[{\"icon\":\"👀\",\"date\":\"Day One\",\"text\":\"The moment our eyes met — the world slowed down.\"},{\"icon\":\"💬\",\"date\":\"First Texts\",\"text\":\"Messages that started casual and turned into something magical.\"},{\"icon\":\"☕\",\"date\":\"First Date\",\"text\":\"Coffee, butterflies, and smiles that wouldn't stop.\"},{\"icon\":\"🤝\",\"date\":\"Together\",\"text\":\"We decided to be each other's person — forever.\"},{\"icon\":\"🌟\",\"date\":\"Every Day\",\"text\":\"And every single day since then has been a blessing.\"}]",
+    "createdAt": "2026-03-01T05:46:08.768Z",
+    "updatedAt": "2026-03-01T05:46:08.768Z"
+  },
+  {
+    "_id": "23f72bddda4dc3370647d91e",
+    "key": "gallery_title",
+    "value": "Our Gallery 📸",
+    "createdAt": "2026-03-01T05:46:08.769Z",
+    "updatedAt": "2026-03-01T05:46:08.769Z"
+  },
+  {
+    "_id": "27882d36025afbfe8edd21ed",
+    "key": "gallery_subtitle",
+    "value": "Moments too beautiful to forget — each one a treasure.",
+    "createdAt": "2026-03-01T05:46:08.770Z",
+    "updatedAt": "2026-03-01T05:46:08.770Z"
+  },
+  {
+    "_id": "9a9d6bd3215a07ffdc02ed8e",
+    "key": "gallery_images",
+    "value": "[{\"src\":\"https://images.unsplash.com/photo-1518621736915-f3b1c41bfd00?w=600&q=80\",\"caption\":\"Where it all began 🌸\"},{\"src\":\"https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80\",\"caption\":\"Dancing in the rain 🌧️\"},{\"src\":\"https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=600&q=80\",\"caption\":\"Your smile ✨\"},{\"src\":\"https://images.unsplash.com/photo-1531058020387-3be344556be6?w=600&q=80\",\"caption\":\"Golden hour moments 🌅\"},{\"src\":\"https://images.unsplash.com/photo-1529333166437-7750a6dd5a70?w=600&q=80\",\"caption\":\"Holding hands forever 🤝\"},{\"src\":\"https://images.unsplash.com/photo-1516589091380-5d8e87df6999?w=600&q=80\",\"caption\":\"Starry night with you 🌠\"},{\"src\":\"https://images.unsplash.com/photo-1474552226712-ac0f0961a954?w=600&q=80\",\"caption\":\"Coffee & conversations ☕\"},{\"src\":\"https://images.unsplash.com/photo-1488392359661-cd4e0f6963ba?w=600&q=80\",\"caption\":\"Cherry blossoms 🌸\"},{\"src\":\"https://images.unsplash.com/photo-1523438885200-e635ba2c371e?w=600&q=80\",\"caption\":\"Adventures ahead 🗺️\"},{\"src\":\"https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600&q=80\",\"caption\":\"Night drives together 🚗\"},{\"src\":\"https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=600&q=80\",\"caption\":\"Love in bloom 🌷\"},{\"src\":\"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80\",\"caption\":\"Your laughter 😄\"}]",
+    "createdAt": "2026-03-01T05:46:08.770Z",
+    "updatedAt": "2026-03-01T05:46:08.770Z"
+  },
+  {
+    "_id": "e5694d17a708e9d29bd61a24",
+    "key": "memories_title",
+    "value": "Our Memories 🌸",
+    "createdAt": "2026-03-01T05:46:08.771Z",
+    "updatedAt": "2026-03-01T05:46:08.771Z"
+  },
+  {
+    "_id": "c141ad3eb7899ac28af88b83",
+    "key": "memories_subtitle",
+    "value": "A timeline of the moments that stitched our hearts together.",
+    "createdAt": "2026-03-01T05:46:08.772Z",
+    "updatedAt": "2026-03-01T05:46:08.772Z"
+  },
+  {
+    "_id": "98bc8785687405ddd66de1c8",
+    "key": "memories_items",
+    "value": "[{\"date\":\"The First Hello\",\"emoji\":\"👋\",\"color\":\"#ffdce8\",\"border\":\"#ff85a9\",\"title\":\"It Started With a Smile\",\"desc\":\"A nervous smile, a bold hello — and suddenly the world felt different. I didn't know it yet, but that was the moment my life changed forever.\"},{\"date\":\"First Coffee Date\",\"emoji\":\"☕\",\"color\":\"#f0e6ff\",\"border\":\"#c084fc\",\"title\":\"Two Hours That Felt Like Minutes\",\"desc\":\"We talked about everything and nothing. The coffee went cold. We didn't care. That café became our favourite place from that day on.\"},{\"date\":\"First Movie Night\",\"emoji\":\"🍿\",\"color\":\"#fff0f5\",\"border\":\"#ff85a9\",\"title\":\"We Barely Watched the Movie\",\"desc\":\"Blanket forts, terrible popcorn, and so much laughter. We talked all the way through and got shushed twice. Perfect night.\"},{\"date\":\"First \\\"I Love You\\\"\",\"emoji\":\"❤️\",\"color\":\"#ffdce8\",\"border\":\"#e83e6c\",\"title\":\"Three Words, Infinite Weight\",\"desc\":\"It slipped out quietly, somewhere between a laugh and a breath. And the silence after wasn't awkward — it was sacred.\"},{\"date\":\"Our First Trip\",\"emoji\":\"✈️\",\"color\":\"#f0e6ff\",\"border\":\"#a855f7\",\"title\":\"Adventures With You Are Home\",\"desc\":\"New city, new memories, same goofy us. Getting lost was the best part — because we were lost together.\"},{\"date\":\"Today & Always\",\"emoji\":\"🌟\",\"color\":\"#fff0f5\",\"border\":\"#ffb3cc\",\"title\":\"Every Day With You\",\"desc\":\"The story is still being written. Every morning we wake up is another chapter I can't wait to live. Here's to forever. 💕\"}]",
+    "createdAt": "2026-03-01T05:46:08.772Z",
+    "updatedAt": "2026-03-01T05:46:08.772Z"
+  },
+  {
+    "_id": "b972a9845463800ddb3317f1",
+    "key": "surprise_title",
+    "value": "Our forever is just beginning… ❤️",
+    "createdAt": "2026-03-01T05:46:08.773Z",
+    "updatedAt": "2026-03-01T05:46:08.773Z"
+  },
+  {
+    "_id": "5c9a504801c095134f7335d1",
+    "key": "surprise_subtitle",
+    "value": "No matter how many pages, songs, or years pass — I will choose you every single time.",
+    "createdAt": "2026-03-01T05:46:08.774Z",
+    "updatedAt": "2026-03-01T05:46:08.774Z"
+  },
+  {
+    "_id": "958252d1186910b4f3458b3d",
+    "key": "surprise_message",
+    "value": "No matter how many pages, songs, or years pass — I will choose you every single time. You are my beginning, my middle, and every beautiful ending I dare to imagine. This isn't just a website. This is my heart, dressed up in pixels, whispering: I love you.",
+    "createdAt": "2026-03-01T05:46:08.774Z",
+    "updatedAt": "2026-03-01T05:46:08.774Z"
+  },
+  {
+    "_id": "d4aab6eed6b0264db142bd1e",
+    "key": "letter_content",
+    "value": "[\"My Dearest Love,\",\"\",\"I have tried a thousand times to find the right words —\",\"words worthy of what you mean to me.\",\"None of them are quite enough.\",\"\",\"You are the reason mornings feel like magic.\",\"The reason I smile at absolutely nothing.\",\"The reason I believe in beautiful, impossible things.\",\"\",\"You walked into my life as if you had always belonged there,\",\"and quietly rearranged everything — in the most wonderful way.\",\"\",\"I love the way you laugh until your eyes crinkle.\",\"The way you say my name.\",\"The way you make the whole world feel softer somehow.\",\"\",\"If I could write a letter to the universe,\",\"I'd simply say: \\\"Thank you for giving me them.\\\"\",\"\",\"Forever and without conditions —\",\"\",\"Yours, completely. 💕\"]",
+    "createdAt": "2026-03-01T05:46:08.775Z",
+    "updatedAt": "2026-03-01T05:46:08.775Z"
+  },
+  {
+    "_id": "4138bf1ab2445390a4c865e5",
+    "key": "footer_text",
+    "value": "Made with 💕 and infinite love · 2026",
+    "createdAt": "2026-03-01T05:46:08.776Z",
+    "updatedAt": "2026-03-01T05:46:08.776Z"
+  },
+  {
+    "_id": "465024b15be539fadb597bc0",
+    "key": "home_cards",
+    "value": "[{\"key\":\"about\",\"icon\":\"💌\",\"title\":\"Our Story\",\"desc\":\"How it all began…\"},{\"key\":\"gallery\",\"icon\":\"📸\",\"title\":\"Gallery\",\"desc\":\"Moments frozen in time\"},{\"key\":\"memories\",\"icon\":\"🌸\",\"title\":\"Memories\",\"desc\":\"Dates we'll never forget\"},{\"key\":\"surprise\",\"icon\":\"🎉\",\"title\":\"Surprise\",\"desc\":\"Something special awaits…\"}]",
+    "createdAt": "2026-03-01T05:46:08.777Z",
+    "updatedAt": "2026-03-01T05:46:08.777Z"
+  }
+]
