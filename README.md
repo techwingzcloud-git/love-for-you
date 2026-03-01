@@ -42,17 +42,7 @@ npm install
 Edit `server/.env` with your credentials:
 
 ```env
-PORT=5000
-JWT_SECRET=your-super-secret-key
-MONGO_URI=mongodb://localhost:27017/loveForYou
-
-ADMIN_NAME=Salif
-ADMIN_EMAIL=salif@loveforyou.com
-ADMIN_PASSWORD=ILoveYou@2026
-
-USER_NAME=My Love
-USER_EMAIL=love@loveforyou.com
-USER_PASSWORD=ILoveYouToo@2026
+secured 
 ```
 
 ### 3. Start MongoDB
@@ -85,8 +75,8 @@ npm run dev
 ### 6. Login
 
 Open `http://localhost:5173` and login with:
-- **Admin:** `salif@loveforyou.com` / `ILoveYou@2026`
-- **User:** `love@loveforyou.com` / `ILoveYouToo@2026`
+- **Admin:** `secured`
+- **User:** `secured`
 
 ---
 
