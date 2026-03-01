@@ -171,10 +171,16 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10kb' }));
 
-// Connect DB before each request
+// Connect DB before each request, then auto-seed on first boot
 app.use(async (req, res, next) => {
-    try { await connectDB(); next(); }
-    catch { res.status(503).json({ error: 'Database not available. Please try again.' }); }
+    try {
+        await connectDB();
+        // Fire-and-forget seed (won't block request)
+        autoSeed().catch(e => console.error('Seed error:', e.message));
+        next();
+    } catch {
+        res.status(503).json({ error: 'Database not available. Please try again.' });
+    }
 });
 
 // Simple rate-limiter for OTP (in-memory, resets on cold start)
@@ -639,9 +645,43 @@ app.get('/api/public/future', protect, async (req, res) => {
     } catch { res.status(500).json({ error: 'Failed.' }); }
 });
 
-// ── Health ─────────────────────────────────────────────────────
+// ── Health & Init ─────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
-    res.json({ status: 'ok', db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected', timestamp: new Date().toISOString() });
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    try {
+        const userCount = await User.countDocuments();
+        res.json({ status: 'ok', db: dbStatus, users: userCount, timestamp: new Date().toISOString() });
+    } catch {
+        res.json({ status: 'ok', db: dbStatus, timestamp: new Date().toISOString() });
+    }
+});
+
+// Public init endpoint — seeds users + content on demand
+app.post('/api/init', async (req, res) => {
+    try {
+        const before = await User.countDocuments();
+        await User.deleteMany({});
+        await User.create({
+            name: process.env.ADMIN_NAME || 'Mohamed Salif',
+            email: process.env.ADMIN_EMAIL || 'mhdsalif@love.com',
+            password: process.env.ADMIN_PASSWORD || 'mhdsalif@love2022',
+            role: 'admin', avatar: '🥰',
+            mobileNumber: process.env.OTP_MOBILE || '9790558017',
+        });
+        await User.create({
+            name: process.env.USER_NAME || 'Nasrin Ayisha Rani',
+            email: process.env.USER_EMAIL || 'nasrinayisha@love.com',
+            password: process.env.USER_PASSWORD || 'nasrinayisha@love2022',
+            role: 'user', avatar: '💕',
+            mobileNumber: process.env.OTP_MOBILE || '9790558017',
+        });
+        seeded = true;
+        await seedContent();
+        const after = await User.countDocuments();
+        res.json({ success: true, message: '✅ Users seeded!', before, after });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 app.use('/api/*', (req, res) => { res.status(404).json({ error: 'API route not found.' }); });
