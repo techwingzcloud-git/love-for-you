@@ -80,6 +80,13 @@ export const publicApi = {
     getFuture: () => api.get('/public/future'),
 };
 
+// ── OTP Recovery API ──────────────────────────────────────────
+export const recoveryApi = {
+    requestOTP: (mobileNumber, type) => api.post('/auth/request-otp', { mobileNumber, type }),
+    verifyOTP: (userId, otp, type) => api.post('/auth/verify-otp', { userId, otp, type }),
+    resetPassword: (resetToken, newPassword) => api.post('/auth/reset-password', { resetToken, newPassword }),
+};
+
 // ── Health API ────────────────────────────────────────────────
 export const healthApi = {
     check: () => api.get('/health'),

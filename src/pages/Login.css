@@ -194,10 +194,136 @@
     color: #e83e6c;
 }
 
-.login__note {
-    margin-top: 1.2rem;
-    font-size: 0.72rem;
+/* ── Recovery Links ─── */
+.login__recovery-links {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 0.8rem;
+}
+
+.login__recovery-link {
+    background: none;
     color: #9b6b8a;
+    font-size: 0.73rem;
+    font-weight: 500;
+    padding: 0.2rem 0.3rem;
+    border-radius: 4px;
+    transition: color 0.2s;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+}
+
+.login__recovery-link:hover {
+    color: #e83e6c;
+}
+
+.login__recovery-divider {
+    color: #d4a5bb;
+    font-size: 0.7rem;
+}
+
+/* ── Recovery Flow ─── */
+.login__recovery {
+    text-align: center;
+}
+
+.login__recovery-title {
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.3rem;
+    color: #e83e6c;
+    margin-bottom: 0.8rem;
+}
+
+.login__recovery-hint {
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.login__success {
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    color: #15803d;
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.55rem 0.8rem;
+    border-radius: 10px;
+    text-align: left;
+    margin-bottom: 0.6rem;
+}
+
+.login__input--otp {
+    text-align: center;
+    font-size: 1.4rem !important;
+    letter-spacing: 0.6rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+}
+
+.login__resend-btn {
+    margin-top: 0.6rem;
+    background: none;
+    color: #9b6b8a;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.2rem 0.5rem;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.login__resend-btn:hover {
+    color: #e83e6c;
+}
+
+/* ── Recovery Result Card ─── */
+.login__recovery-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+}
+
+.login__recovery-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1.5px solid rgba(255, 133, 169, 0.3);
+    border-radius: 1rem;
+    padding: 1.5rem 1.2rem;
+    text-align: center;
+    width: 100%;
+    backdrop-filter: blur(10px);
+}
+
+.login__recovery-emoji {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 0.6rem;
+}
+
+.login__recovery-found {
+    font-size: 0.85rem;
+    color: #6b3a5a;
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+}
+
+.login__recovery-email {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e83e6c;
+    background: rgba(232, 62, 108, 0.06);
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    margin: 0.4rem 0;
+    word-break: break-all;
+}
+
+.login__recovery-name {
+    font-size: 0.78rem;
+    color: #9b6b8a;
+    margin-top: 0.3rem;
 }
 
 /* ── Responsive ─── */
@@ -221,6 +347,11 @@
 
     .login__role-icon {
         font-size: 1.6rem;
+    }
+
+    .login__input--otp {
+        font-size: 1.2rem !important;
+        letter-spacing: 0.4rem;
     }
 }
 

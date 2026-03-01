@@ -1,22 +1,24 @@
 [
   {
-    "_id": "7ab1fcfcbef11ba6ff118f83",
-    "name": "Salif",
-    "email": "salif@loveforyou.com",
-    "password": "$2b$12$Acee0/vM9qXdHdC33l9DVORF8MHozYhiIAT6/qs8eImJC4tX.xb5.",
+    "_id": "06f344dcd74145c7975a7697",
+    "name": "Mohamed Salif",
+    "email": "mhdsalif@love.com",
+    "password": "$2b$12$f8YEZp2KZdcvol0lGIuvauXPNdYXrDTrCeTLt18lwIQJRaugiYkPW",
     "role": "admin",
     "avatar": "🥰",
-    "createdAt": "2026-02-26T16:27:11.314Z",
-    "updatedAt": "2026-02-26T16:27:11.314Z"
+    "mobileNumber": "9790558017",
+    "createdAt": "2026-03-01T07:56:41.175Z",
+    "updatedAt": "2026-03-01T07:56:41.175Z"
   },
   {
-    "_id": "0225bb9ae7e961024d031c97",
-    "name": "My Love",
-    "email": "love@loveforyou.com",
-    "password": "$2b$12$VCHY85Eec0HMkrN5TJ7eJe0Ip36veRerKUR5h5JNNpP4.RCnImtLq",
+    "_id": "05553257700841fbbfeaf6f1",
+    "name": "Nasrin Ayisha Rani",
+    "email": "nasrinayisha@love.com",
+    "password": "$2b$12$vl5rLkNYFFzEEL2zwganweZuWs9ehHPkE3P1Po5607hbaziOzdm9C",
     "role": "user",
     "avatar": "💕",
-    "createdAt": "2026-02-26T16:27:11.315Z",
-    "updatedAt": "2026-02-26T16:27:11.315Z"
+    "mobileNumber": "9790558017",
+    "createdAt": "2026-03-01T07:56:41.176Z",
+    "updatedAt": "2026-03-01T07:56:41.176Z"
   }
 ]

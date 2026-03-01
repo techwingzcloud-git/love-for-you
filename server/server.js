@@ -41,18 +41,20 @@ async function autoSeed() {
 
     const users = [
         {
-            name: process.env.ADMIN_NAME || 'Salif',
-            email: (process.env.ADMIN_EMAIL || 'salif@loveforyou.com').toLowerCase(),
-            password: await bcrypt.hash(process.env.ADMIN_PASSWORD || 'ILoveYou@2026', 12),
+            name: process.env.ADMIN_NAME || 'Mohamed Salif',
+            email: (process.env.ADMIN_EMAIL || 'mhdsalif@love.com').toLowerCase(),
+            password: await bcrypt.hash(process.env.ADMIN_PASSWORD || 'mhdsalif@love2022', 12),
             role: 'admin',
             avatar: '🥰',
+            mobileNumber: process.env.OTP_MOBILE || '9790558017',
         },
         {
-            name: process.env.USER_NAME || 'My Love',
-            email: (process.env.USER_EMAIL || 'love@loveforyou.com').toLowerCase(),
-            password: await bcrypt.hash(process.env.USER_PASSWORD || 'ILoveYouToo@2026', 12),
+            name: process.env.USER_NAME || 'Nasrin Ayisha Rani',
+            email: (process.env.USER_EMAIL || 'nasrinayisha@love.com').toLowerCase(),
+            password: await bcrypt.hash(process.env.USER_PASSWORD || 'nasrinayisha@love2022', 12),
             role: 'user',
             avatar: '💕',
+            mobileNumber: process.env.OTP_MOBILE || '9790558017',
         },
     ];
 

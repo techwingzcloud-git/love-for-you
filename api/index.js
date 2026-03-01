@@ -1,14 +1,14 @@
 /* ============================================================
    Vercel Serverless API — Love For You ❤️
-   All backend routes in one serverless function
-   Includes: Auth, Messages, Content CMS, Our Future
-   Uses MongoDB Atlas for persistent storage
+   Auth, Messages, Content CMS, Our Future, OTP Recovery
+   MongoDB Atlas · bcrypt · JWT · OTP SMS
    ============================================================ */
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 
 const app = express();
 
@@ -17,14 +17,12 @@ let isConnected = false;
 
 async function connectDB() {
     if (isConnected && mongoose.connection.readyState === 1) return;
-    if (!process.env.MONGO_URI) {
-        throw new Error('MONGO_URI environment variable is not set');
-    }
+    const uri = process.env.MONGODB_URI || process.env.MONGO_URI;
+    if (!uri) throw new Error('MONGODB_URI environment variable is not set');
     try {
         mongoose.set('bufferCommands', false);
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(uri);
         isConnected = true;
-        console.log('✅ MongoDB connected');
     } catch (err) {
         isConnected = false;
         console.error('MongoDB connection error:', err.message);
@@ -39,13 +37,18 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true, select: false },
     role: { type: String, enum: ['admin', 'user'], default: 'user' },
     avatar: { type: String, default: '💕' },
+    mobileNumber: { type: String, default: '' },
+    otpCode: { type: String, default: '', select: false },
+    otpExpiry: { type: Date, default: null, select: false },
+    otpAttempts: { type: Number, default: 0, select: false },
+    otpVerified: { type: Boolean, default: false },
+    otpLastRequest: { type: Date, default: null, select: false },
 }, { timestamps: true });
 
 userSchema.pre('save', async function () {
     if (!this.isModified('password')) return;
     this.password = await bcrypt.hash(this.password, 12);
 });
-
 userSchema.methods.comparePassword = async function (candidate) {
     return bcrypt.compare(candidate, this.password);
 };
@@ -56,7 +59,6 @@ const messageSchema = new mongoose.Schema({
     message: { type: String, required: true, trim: true, maxlength: 2000 },
     readStatus: { type: Boolean, default: false },
 }, { timestamps: true });
-
 messageSchema.index({ senderId: 1, receiverId: 1, createdAt: -1 });
 
 const contentSchema = new mongoose.Schema({
@@ -78,14 +80,14 @@ const Content = mongoose.models.Content || mongoose.model('Content', contentSche
 const Future = mongoose.models.Future || mongoose.model('Future', futureSchema);
 
 // ── JWT helpers ───────────────────────────────────────────────
-const generateToken = (userId) =>
-    jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+const JWT_SECRET = process.env.JWT_SECRET || 'love-for-you-default-secret';
+const generateToken = (userId) => jwt.sign({ id: userId }, JWT_SECRET, { expiresIn: '7d' });
 
 const protect = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'Not authorized. Please log in.' });
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET);
         const user = await User.findById(decoded.id);
         if (!user) return res.status(401).json({ error: 'User not found.' });
         req.user = user;
@@ -96,21 +98,73 @@ const protect = async (req, res, next) => {
 };
 
 const adminOnly = (req, res, next) => {
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required.' });
-    }
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin access required.' });
     next();
 };
+
+// ── OTP Helpers ───────────────────────────────────────────────
+function generateOTP() {
+    return crypto.randomInt(100000, 999999).toString();
+}
+
+async function hashOTP(otp) {
+    return bcrypt.hash(otp, 10);
+}
+
+async function verifyOTP(plainOtp, hashedOtp) {
+    return bcrypt.compare(plainOtp, hashedOtp);
+}
+
+// Send OTP via Twilio SMS (or console fallback)
+async function sendOTPviaSMS(mobileNumber, otp) {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+
+    if (!accountSid || !authToken || !fromNumber) {
+        // Fallback: log OTP to console (for development/testing)
+        console.log(`📱 OTP for ${mobileNumber}: ${otp}`);
+        console.log('⚠️  Twilio not configured — OTP logged to console');
+        return { success: true, method: 'console' };
+    }
+
+    try {
+        const formattedNumber = mobileNumber.startsWith('+') ? mobileNumber : `+91${mobileNumber}`;
+        const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+        const body = new URLSearchParams({
+            To: formattedNumber,
+            From: fromNumber,
+            Body: `💕 Love For You — Your OTP is: ${otp}. Valid for 5 minutes. Do not share.`,
+        });
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: body.toString(),
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            console.error('Twilio error:', errData);
+            return { success: false, error: 'SMS delivery failed' };
+        }
+        return { success: true, method: 'sms' };
+    } catch (err) {
+        console.error('SMS sending error:', err.message);
+        return { success: false, error: err.message };
+    }
+}
 
 // ── Middleware ─────────────────────────────────────────────────
 app.use(cors({
     origin: (origin, cb) => {
-        // Allow all Vercel preview/production URLs, localhost, and custom domains
         if (!origin || origin.endsWith('.vercel.app') ||
             origin.includes('localhost') || origin.includes('127.0.0.1')) {
             return cb(null, true);
         }
-        // Allow any origin for now (the JWT protects all routes anyway)
         cb(null, true);
     },
     credentials: true,
@@ -119,15 +173,24 @@ app.use(express.json({ limit: '10kb' }));
 
 // Connect DB before each request
 app.use(async (req, res, next) => {
-    try {
-        await connectDB();
-        next();
-    } catch {
-        res.status(503).json({ error: 'Database not available. Please try again.' });
-    }
+    try { await connectDB(); next(); }
+    catch { res.status(503).json({ error: 'Database not available. Please try again.' }); }
 });
 
-// ── Auto-seed on first request ────────────────────────────────
+// Simple rate-limiter for OTP (in-memory, resets on cold start)
+const otpRateLimit = new Map();
+function checkOTPRateLimit(key) {
+    const now = Date.now();
+    const record = otpRateLimit.get(key);
+    if (record && now - record.timestamp < 60000) {
+        // Max 1 request per 60 seconds per phone
+        return false;
+    }
+    otpRateLimit.set(key, { timestamp: now });
+    return true;
+}
+
+// ── Auto-seed ─────────────────────────────────────────────────
 let seeded = false;
 async function autoSeed() {
     if (seeded) return;
@@ -136,24 +199,26 @@ async function autoSeed() {
 
     await User.deleteMany({});
     await User.create({
-        name: process.env.ADMIN_NAME || 'Salif',
-        email: process.env.ADMIN_EMAIL || 'salif@loveforyou.com',
-        password: process.env.ADMIN_PASSWORD || 'ILoveYou@2026',
+        name: process.env.ADMIN_NAME || 'Mohamed Salif',
+        email: process.env.ADMIN_EMAIL || 'mhdsalif@love.com',
+        password: process.env.ADMIN_PASSWORD || 'mhdsalif@love2022',
         role: 'admin',
         avatar: '🥰',
+        mobileNumber: process.env.OTP_MOBILE || '9790558017',
     });
     await User.create({
-        name: process.env.USER_NAME || 'My Love',
-        email: process.env.USER_EMAIL || 'love@loveforyou.com',
-        password: process.env.USER_PASSWORD || 'ILoveYouToo@2026',
+        name: process.env.USER_NAME || 'Nasrin Ayisha Rani',
+        email: process.env.USER_EMAIL || 'nasrinayisha@love.com',
+        password: process.env.USER_PASSWORD || 'nasrinayisha@love2022',
         role: 'user',
         avatar: '💕',
+        mobileNumber: process.env.OTP_MOBILE || '9790558017',
     });
     seeded = true;
     console.log('🎉 Users seeded!');
 }
 
-// Seed default content — ALL content keys
+// Seed default content
 let contentSeeded = false;
 async function seedContent() {
     if (contentSeeded) return;
@@ -178,16 +243,16 @@ async function seedContent() {
         { key: 'about_subtitle', value: "Every great love story has a beginning. Here's ours — clumsy, beautiful, and completely unforgettable." },
         {
             key: 'about_blocks', value: JSON.stringify([
-                { side: 'left', emoji: '🌷', title: 'How It Began', text: 'It started with something so simple — a glance, a smile, a "hey". Neither of us knew that tiny moment would change everything. The universe quietly conspired to bring two hearts together, and somehow, impossibly, it worked.' },
-                { side: 'right', emoji: '💫', title: 'Falling Together', text: "We fell slowly, then all at once. Long late-night calls, silly memes, inside jokes that no one else would understand. We built a world just for us — warm, colourful, and wonderfully chaotic." },
-                { side: 'left', emoji: '🌸', title: 'What You Mean to Me', text: "You are the calm in my storm, the answer to questions I hadn't yet asked. Every day with you is a reminder that the best things in life are never planned." },
-                { side: 'right', emoji: '❤️', title: 'Our Future', text: 'Adventures unplanned, sunsets unshared, laughter yet to echo — so much still to come. Together, we are unstoppable. This is just the beginning.' },
+                { side: 'left', emoji: '🌷', title: 'How It Began', text: 'It started with something so simple — a glance, a smile, a "hey". Neither of us knew that tiny moment would change everything.' },
+                { side: 'right', emoji: '💫', title: 'Falling Together', text: 'We fell slowly, then all at once. Long late-night calls, silly memes, inside jokes that no one else would understand.' },
+                { side: 'left', emoji: '🌸', title: 'What You Mean to Me', text: "You are the calm in my storm, the answer to questions I hadn't yet asked." },
+                { side: 'right', emoji: '❤️', title: 'Our Future', text: 'Adventures unplanned, sunsets unshared, laughter yet to echo — so much still to come.' },
             ])
         },
         {
             key: 'about_milestones', value: JSON.stringify([
                 { icon: '👀', date: 'Day One', text: 'The moment our eyes met — the world slowed down.' },
-                { icon: '💬', date: 'First Texts', text: "Messages that started casual and turned into something magical." },
+                { icon: '💬', date: 'First Texts', text: 'Messages that started casual and turned into something magical.' },
                 { icon: '☕', date: 'First Date', text: "Coffee, butterflies, and smiles that wouldn't stop." },
                 { icon: '🤝', date: 'Together', text: "We decided to be each other's person — forever." },
                 { icon: '🌟', date: 'Every Day', text: 'And every single day since then has been a blessing.' },
@@ -209,63 +274,50 @@ async function seedContent() {
         { key: 'memories_subtitle', value: 'A timeline of the moments that stitched our hearts together.' },
         {
             key: 'memories_items', value: JSON.stringify([
-                { date: 'The First Hello', emoji: '👋', color: '#ffdce8', border: '#ff85a9', title: 'It Started With a Smile', desc: 'A nervous smile, a bold hello — and suddenly the world felt different. I didn\'t know it yet, but that was the moment my life changed forever.' },
-                { date: 'First Coffee Date', emoji: '☕', color: '#f0e6ff', border: '#c084fc', title: 'Two Hours That Felt Like Minutes', desc: 'We talked about everything and nothing. The coffee went cold. We didn\'t care. That afternoon, something beautiful began.' },
-                { date: 'First Movie Night', emoji: '🍿', color: '#fff0f5', border: '#ff85a9', title: 'We Barely Watched the Movie', desc: 'Blanket forts, terrible popcorn, and so much laughter. It wasn\'t about the movie. It was about being together.' },
-                { date: 'First "I Love You"', emoji: '❤️', color: '#ffdce8', border: '#e83e6c', title: 'Three Words, Infinite Weight', desc: 'It slipped out quietly, somewhere between a laugh and a breath. And just like that, everything changed.' },
-                { date: 'Our First Trip', emoji: '✈️', color: '#f0e6ff', border: '#a855f7', title: 'Adventures With You Are Home', desc: 'New city, new memories, same goofy us. That trip proved we could survive anything together.' },
-                { date: 'Today & Always', emoji: '🌟', color: '#fff0f5', border: '#ffb3cc', title: 'Every Day With You', desc: 'The story is still being written. Here\'s to forever. 💕' },
+                { date: 'The First Hello', emoji: '👋', color: '#ffdce8', border: '#ff85a9', title: 'It Started With a Smile', desc: 'A nervous smile, a bold hello — and suddenly the world felt different.' },
+                { date: 'First Coffee Date', emoji: '☕', color: '#f0e6ff', border: '#c084fc', title: 'Two Hours That Felt Like Minutes', desc: 'We talked about everything and nothing. The coffee went cold.' },
+                { date: 'First Movie Night', emoji: '🍿', color: '#fff0f5', border: '#ff85a9', title: 'We Barely Watched the Movie', desc: 'Blanket forts, terrible popcorn, and so much laughter.' },
+                { date: 'First "I Love You"', emoji: '❤️', color: '#ffdce8', border: '#e83e6c', title: 'Three Words, Infinite Weight', desc: 'It slipped out quietly. And everything changed.' },
+                { date: 'Our First Trip', emoji: '✈️', color: '#f0e6ff', border: '#a855f7', title: 'Adventures With You Are Home', desc: 'New city, new memories, same goofy us.' },
+                { date: 'Today & Always', emoji: '🌟', color: '#fff0f5', border: '#ffb3cc', title: 'Every Day With You', desc: "The story is still being written. Here's to forever. 💕" },
             ])
         },
         { key: 'surprise_title', value: 'Our forever is just beginning… ❤️' },
-        { key: 'surprise_message', value: "No matter how many pages, songs, or years pass — I will choose you every single time. You are my beginning, my middle, and every beautiful ending I dare to imagine. This isn't just a website. This is my heart, dressed up in pixels, whispering: I love you." },
+        { key: 'surprise_message', value: "No matter how many pages, songs, or years pass — I will choose you every single time." },
         {
             key: 'letter_content', value: JSON.stringify([
                 'My Dearest Love,', '',
                 'I have tried a thousand times to find the right words —',
-                'words worthy of what you mean to me.',
-                'None of them are quite enough.', '',
+                'words worthy of what you mean to me.', '',
                 'You are the reason mornings feel like magic.',
-                'The reason I smile at absolutely nothing.',
-                'The reason I believe in beautiful, impossible things.', '',
-                'You walked into my life as if you had always belonged there,',
-                'and quietly rearranged everything — in the most wonderful way.', '',
+                'The reason I smile at absolutely nothing.', '',
                 'I love the way you laugh until your eyes crinkle.',
-                'The way you say my name.',
-                'The way you make the whole world feel softer somehow.', '',
-                "If I could write a letter to the universe,",
-                'I\'d simply say: "Thank you for giving me them."', '',
+                'The way you say my name.', '',
                 'Forever and without conditions —', '',
                 'Yours, completely. 💕',
             ])
         },
         { key: 'footer_text', value: 'Made with 💕 and infinite love · 2026' },
     ];
-
     await Content.insertMany(defaults);
     contentSeeded = true;
-    console.log('📝 Content seeded!');
 }
 
-// Seed default future items
+// Seed future items
 let futureSeeded = false;
 async function seedFuture() {
     if (futureSeeded) return;
     const count = await Future.countDocuments();
     if (count > 0) { futureSeeded = true; return; }
-
-    const defaults = [
+    await Future.insertMany([
         { type: 'game', title: 'Love Quiz', description: 'How well do you know each other?', emoji: '🎯', enabled: true },
         { type: 'game', title: 'Truth or Dare', description: 'Romantic truth or dare!', emoji: '🎲', enabled: true },
         { type: 'dare', title: 'Write a Poem', description: 'Write a 4-line love poem right now!', emoji: '✍️', enabled: true },
         { type: 'dare', title: 'Surprise Call', description: 'Call and say the sweetest thing!', emoji: '📞', enabled: true },
         { type: 'surprise', title: 'Mystery Date Night', description: 'Plan a surprise date!', emoji: '🌙', enabled: true },
         { type: 'surprise', title: 'Love Jar', description: 'Write 10 reasons why you love them!', emoji: '🫙', enabled: true },
-    ];
-
-    await Future.insertMany(defaults);
+    ]);
     futureSeeded = true;
-    console.log('🔮 Future items seeded!');
 }
 
 // ═══════════════════════════════════════════════
@@ -294,17 +346,178 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-app.get('/api/auth/me', protect, async (req, res) => {
-    res.json({
-        id: req.user._id, name: req.user.name, email: req.user.email,
-        role: req.user.role, avatar: req.user.avatar,
-    });
+app.get('/api/auth/me', protect, (req, res) => {
+    res.json({ id: req.user._id, name: req.user.name, email: req.user.email, role: req.user.role, avatar: req.user.avatar });
 });
 
 app.get('/api/auth/partner', protect, async (req, res) => {
     const partner = await User.findOne({ _id: { $ne: req.user._id } });
     if (!partner) return res.status(404).json({ error: 'Partner not found.' });
     res.json({ id: partner._id, name: partner.name, avatar: partner.avatar });
+});
+
+// ═══════════════════════════════════════════════
+// OTP RECOVERY ROUTES
+// ═══════════════════════════════════════════════
+
+// Step 1: Request OTP — user provides mobile number + recovery type
+app.post('/api/auth/request-otp', async (req, res) => {
+    try {
+        await autoSeed();
+        const { mobileNumber, type } = req.body; // type: 'forgot-email' | 'forgot-password'
+        if (!mobileNumber) return res.status(400).json({ error: 'Mobile number is required.' });
+        if (!['forgot-email', 'forgot-password'].includes(type)) {
+            return res.status(400).json({ error: 'Invalid recovery type.' });
+        }
+
+        // Sanitize mobile number
+        const cleanMobile = mobileNumber.replace(/[^0-9]/g, '');
+        if (cleanMobile.length < 10) return res.status(400).json({ error: 'Invalid mobile number.' });
+
+        // Rate limit: 1 OTP per 60 seconds per number
+        if (!checkOTPRateLimit(cleanMobile)) {
+            return res.status(429).json({ error: 'Please wait 60 seconds before requesting another OTP.' });
+        }
+
+        // Find user by mobile number
+        const user = await User.findOne({ mobileNumber: cleanMobile }).select('+otpCode +otpExpiry +otpAttempts +otpLastRequest');
+        if (!user) return res.status(404).json({ error: 'No account found with this mobile number.' });
+
+        // Generate OTP
+        const otp = generateOTP();
+        const hashedOtp = await hashOTP(otp);
+
+        // Store hashed OTP with 5-minute expiry
+        user.otpCode = hashedOtp;
+        user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+        user.otpAttempts = 0;
+        user.otpVerified = false;
+        user.otpLastRequest = new Date();
+        await user.save();
+
+        // Send OTP
+        const result = await sendOTPviaSMS(cleanMobile, otp);
+        if (!result.success) {
+            return res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
+        }
+
+        // Mask info for response
+        const maskedEmail = user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+        const maskedName = user.name.split(' ')[0];
+
+        res.json({
+            success: true,
+            message: `OTP sent to ****${cleanMobile.slice(-4)}`,
+            userId: user._id,
+            maskedName,
+            maskedEmail: type === 'forgot-password' ? maskedEmail : undefined,
+            method: result.method,
+        });
+    } catch (err) {
+        console.error('OTP request error:', err);
+        res.status(500).json({ error: 'Failed to process request.' });
+    }
+});
+
+// Step 2: Verify OTP
+app.post('/api/auth/verify-otp', async (req, res) => {
+    try {
+        const { userId, otp, type } = req.body;
+        if (!userId || !otp) return res.status(400).json({ error: 'User ID and OTP are required.' });
+
+        const user = await User.findById(userId).select('+otpCode +otpExpiry +otpAttempts +password');
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+
+        // Check if OTP has expired
+        if (!user.otpExpiry || new Date() > user.otpExpiry) {
+            user.otpCode = '';
+            user.otpExpiry = null;
+            user.otpAttempts = 0;
+            await user.save();
+            return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+        }
+
+        // Check max attempts (3)
+        if (user.otpAttempts >= 3) {
+            user.otpCode = '';
+            user.otpExpiry = null;
+            user.otpAttempts = 0;
+            await user.save();
+            return res.status(400).json({ error: 'Maximum attempts exceeded. Please request a new OTP.' });
+        }
+
+        // Verify OTP
+        const isValid = await verifyOTP(otp.toString(), user.otpCode);
+        if (!isValid) {
+            user.otpAttempts += 1;
+            await user.save();
+            const remaining = 3 - user.otpAttempts;
+            return res.status(400).json({ error: `Invalid OTP. ${remaining} attempt(s) remaining.` });
+        }
+
+        // OTP verified — clear it
+        user.otpCode = '';
+        user.otpExpiry = null;
+        user.otpAttempts = 0;
+        user.otpVerified = true;
+        await user.save();
+
+        // Generate a temporary reset token (valid 10 minutes)
+        const resetToken = jwt.sign({ id: user._id, purpose: 'reset' }, JWT_SECRET, { expiresIn: '10m' });
+
+        // Response based on type
+        if (type === 'forgot-email') {
+            return res.json({
+                success: true,
+                email: user.email,
+                name: user.name,
+                message: 'Email retrieved successfully.',
+            });
+        }
+
+        // For forgot-password, return reset token
+        res.json({
+            success: true,
+            resetToken,
+            message: 'OTP verified. You can now reset your password.',
+        });
+    } catch (err) {
+        console.error('OTP verify error:', err);
+        res.status(500).json({ error: 'Verification failed.' });
+    }
+});
+
+// Step 3: Reset Password
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { resetToken, newPassword } = req.body;
+        if (!resetToken || !newPassword) return res.status(400).json({ error: 'Reset token and new password required.' });
+        if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+
+        // Verify reset token
+        let decoded;
+        try {
+            decoded = jwt.verify(resetToken, JWT_SECRET);
+        } catch {
+            return res.status(400).json({ error: 'Reset link has expired. Please start over.' });
+        }
+
+        if (decoded.purpose !== 'reset') return res.status(400).json({ error: 'Invalid reset token.' });
+
+        const user = await User.findById(decoded.id).select('+password');
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+        if (!user.otpVerified) return res.status(400).json({ error: 'OTP verification required first.' });
+
+        // Update password (pre-save hook will hash it)
+        user.password = newPassword;
+        user.otpVerified = false;
+        await user.save();
+
+        res.json({ success: true, message: 'Password reset successfully! You can now log in.' });
+    } catch (err) {
+        console.error('Password reset error:', err);
+        res.status(500).json({ error: 'Password reset failed.' });
+    }
 });
 
 // ═══════════════════════════════════════════════
@@ -315,38 +528,25 @@ app.get('/api/messages', protect, async (req, res) => {
     try {
         const messages = await Message.find({
             $or: [{ senderId: req.user._id }, { receiverId: req.user._id }],
-        })
-            .sort({ createdAt: 1 })
-            .limit(500)
+        }).sort({ createdAt: 1 }).limit(500)
             .populate('senderId', 'name avatar')
             .populate('receiverId', 'name avatar');
         res.json(messages);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch messages.' });
-    }
+    } catch { res.status(500).json({ error: 'Failed to fetch messages.' }); }
 });
 
 app.post('/api/messages', protect, async (req, res) => {
     try {
         const { receiverId, message } = req.body;
         if (!receiverId || !message) return res.status(400).json({ error: 'receiverId and message required.' });
-        if (message.length > 2000) return res.status(400).json({ error: 'Message too long (max 2000 characters).' });
-
-        const newMsg = await Message.create({
-            senderId: req.user._id,
-            receiverId,
-            message: message.trim(),
-        });
-
+        if (message.length > 2000) return res.status(400).json({ error: 'Message too long.' });
+        const newMsg = await Message.create({ senderId: req.user._id, receiverId, message: message.trim() });
         const populated = await newMsg.populate([
             { path: 'senderId', select: 'name avatar' },
             { path: 'receiverId', select: 'name avatar' },
         ]);
-
         res.status(201).json(populated);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to send message.' });
-    }
+    } catch { res.status(500).json({ error: 'Failed to send message.' }); }
 });
 
 app.patch('/api/messages/read', protect, async (req, res) => {
@@ -368,36 +568,25 @@ app.delete('/api/messages/:id', protect, async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
-// ADMIN CONTENT ROUTES (CMS)
+// ADMIN CONTENT ROUTES
 // ═══════════════════════════════════════════════
 
 app.get('/api/content', protect, adminOnly, async (req, res) => {
     try {
         await seedContent();
         const content = await Content.find();
-        const contentMap = {};
-        content.forEach(c => { contentMap[c.key] = c; });
-        res.json(contentMap);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch content.' });
-    }
+        const map = {}; content.forEach(c => { map[c.key] = c; });
+        res.json(map);
+    } catch { res.status(500).json({ error: 'Failed to fetch content.' }); }
 });
 
 app.put('/api/content/:key', protect, adminOnly, async (req, res) => {
     try {
-        const { key } = req.params;
         const { value } = req.body;
-        if (value === undefined) return res.status(400).json({ error: 'Value is required.' });
-
-        const updated = await Content.findOneAndUpdate(
-            { key },
-            { value },
-            { upsert: true, new: true }
-        );
+        if (value === undefined) return res.status(400).json({ error: 'Value required.' });
+        const updated = await Content.findOneAndUpdate({ key: req.params.key }, { value }, { upsert: true, new: true });
         res.json(updated);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to update content.' });
-    }
+    } catch { res.status(500).json({ error: 'Failed to update.' }); }
 });
 
 // ═══════════════════════════════════════════════
@@ -405,90 +594,56 @@ app.put('/api/content/:key', protect, adminOnly, async (req, res) => {
 // ═══════════════════════════════════════════════
 
 app.get('/api/content/future', protect, adminOnly, async (req, res) => {
-    try {
-        await seedFuture();
-        const items = await Future.find().sort({ createdAt: -1 });
-        res.json(items);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch future items.' });
-    }
+    try { await seedFuture(); res.json(await Future.find().sort({ createdAt: -1 })); }
+    catch { res.status(500).json({ error: 'Failed.' }); }
 });
-
 app.post('/api/content/future', protect, adminOnly, async (req, res) => {
     try {
         const { type, title, description, emoji, enabled } = req.body;
         if (!type || !title) return res.status(400).json({ error: 'Type and title required.' });
-        const item = await Future.create({ type, title, description, emoji, enabled });
-        res.status(201).json(item);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to create future item.' });
-    }
+        res.status(201).json(await Future.create({ type, title, description, emoji, enabled }));
+    } catch { res.status(500).json({ error: 'Failed.' }); }
 });
-
 app.put('/api/content/future/:id', protect, adminOnly, async (req, res) => {
     try {
         const item = await Future.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        if (!item) return res.status(404).json({ error: 'Item not found.' });
+        if (!item) return res.status(404).json({ error: 'Not found.' });
         res.json(item);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to update future item.' });
-    }
+    } catch { res.status(500).json({ error: 'Failed.' }); }
 });
-
 app.delete('/api/content/future/:id', protect, adminOnly, async (req, res) => {
     try {
         const item = await Future.findByIdAndDelete(req.params.id);
-        if (!item) return res.status(404).json({ error: 'Item not found.' });
+        if (!item) return res.status(404).json({ error: 'Not found.' });
         res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to delete future item.' });
-    }
+    } catch { res.status(500).json({ error: 'Failed.' }); }
 });
 
 // ═══════════════════════════════════════════════
-// PUBLIC CONTENT ROUTES (read-only for authenticated users)
+// PUBLIC CONTENT ROUTES
 // ═══════════════════════════════════════════════
 
 app.get('/api/public/content', protect, async (req, res) => {
     try {
         await seedContent();
         const content = await Content.find();
-        const contentMap = {};
-        content.forEach(c => { contentMap[c.key] = c.value; });
-        res.json(contentMap);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch content.' });
-    }
+        const map = {}; content.forEach(c => { map[c.key] = c.value; });
+        res.json(map);
+    } catch { res.status(500).json({ error: 'Failed.' }); }
 });
 
 app.get('/api/public/future', protect, async (req, res) => {
     try {
         await seedFuture();
-        const items = await Future.find({ enabled: true }).sort({ createdAt: -1 });
-        res.json(items);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch future items.' });
-    }
+        res.json(await Future.find({ enabled: true }).sort({ createdAt: -1 }));
+    } catch { res.status(500).json({ error: 'Failed.' }); }
 });
 
-// ═══════════════════════════════════════════════
-// HEALTH CHECK
-// ═══════════════════════════════════════════════
-
+// ── Health ─────────────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
-    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
-    res.json({
-        status: 'ok',
-        message: '💕 Love For You API is running!',
-        database: dbStatus,
-        timestamp: new Date().toISOString(),
-    });
+    res.json({ status: 'ok', db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected', timestamp: new Date().toISOString() });
 });
 
-// ── 404 handler ───────────────────────────────────────────────
-app.use('/api/*', (req, res) => {
-    res.status(404).json({ error: 'API route not found.' });
-});
+app.use('/api/*', (req, res) => { res.status(404).json({ error: 'API route not found.' }); });
 
-// ── Export for Vercel ─────────────────────────────────────────
 export default app;
