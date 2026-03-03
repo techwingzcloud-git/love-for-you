@@ -6,14 +6,6 @@ import { useContent } from '../context/ContentContext';
 import { contentApi } from '../api/messageApi';
 import './AdminPanel.css';
 
-// ─── Cloudinary config ───────────────────────────────────────────
-// Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET
-// in your .env file OR in Vercel project environment variables.
-// Create a FREE account at https://cloudinary.com — no credit card needed.
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || '';
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || '';
-const cloudinaryConfigured = Boolean(CLOUD_NAME && UPLOAD_PRESET);
-
 const TABS = [
     { key: 'text', label: '✏️ Text Content' },
     { key: 'structured', label: '📋 Sections' },
@@ -48,34 +40,13 @@ const STRUCTURED_FIELDS = [
     { key: 'memories_items', label: 'Memories Timeline Items (JSON array)', type: 'textarea-large' },
 ];
 
-// ─── Upload to Cloudinary directly from browser ──────────────────
-async function uploadToCloudinary(file, onProgress) {
-    if (!cloudinaryConfigured) {
-        throw new Error('Cloudinary not configured. See setup instructions below.');
-    }
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', UPLOAD_PRESET);
-    formData.append('folder', 'love-for-you');
-
+// Read a File as a base64 data URL
+function readFileAsBase64(file) {
     return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable && onProgress) {
-                onProgress(Math.round((e.loaded / e.total) * 100));
-            }
-        });
-        xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`);
-        xhr.onload = () => {
-            if (xhr.status === 200) {
-                const data = JSON.parse(xhr.responseText);
-                resolve(data.secure_url);
-            } else {
-                reject(new Error('Upload failed: ' + xhr.responseText));
-            }
-        };
-        xhr.onerror = () => reject(new Error('Network error during upload.'));
-        xhr.send(formData);
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
     });
 }
 
@@ -92,7 +63,7 @@ export default function AdminPanel() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    // Image upload states
+    // ── Image upload state ──
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [uploadPreview, setUploadPreview] = useState(null);
@@ -103,10 +74,10 @@ export default function AdminPanel() {
     const fileInputRef = useRef(null);
     const replaceInputRef = useRef(null);
 
-    // New future item form
+    // ── Future item form ──
     const [newFuture, setNewFuture] = useState({ type: 'game', title: '', description: '', emoji: '✨' });
 
-    // Load content
+    // Load content from API
     const loadContent = useCallback(async () => {
         try {
             setLoading(true);
@@ -114,15 +85,14 @@ export default function AdminPanel() {
                 contentApi.getAll(),
                 contentApi.getFuture(),
             ]);
-            const contentData = contentRes.data;
             const values = {};
-            Object.entries(contentData).forEach(([key, item]) => {
+            Object.entries(contentRes.data).forEach(([key, item]) => {
                 values[key] = item.value || '';
             });
             setEditValues(values);
             setFutureItems(futureRes.data);
         } catch {
-            setError('Failed to load content. Make sure you are logged in as admin.');
+            setError('Failed to load content.');
         } finally {
             setLoading(false);
         }
@@ -133,7 +103,7 @@ export default function AdminPanel() {
         loadContent();
     }, [user, navigate, loadContent]);
 
-    // Save a text field
+    // Save a single text/JSON content field
     const saveField = async (key) => {
         try {
             setSaving(prev => ({ ...prev, [key]: true }));
@@ -142,131 +112,136 @@ export default function AdminPanel() {
             refresh();
             setTimeout(() => setSaved(prev => ({ ...prev, [key]: false })), 2000);
         } catch {
-            setError(`Failed to save ${key}. Try again.`);
+            setError(`Failed to save "${key}". Try again.`);
         } finally {
             setSaving(prev => ({ ...prev, [key]: false }));
         }
     };
 
-    // Preview selected image
-    const handleFileChange = (e) => {
+    // ── Read & preview picked file ──
+    const handleFileChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => setUploadPreview(ev.target?.result);
-        reader.readAsDataURL(file);
         setUploadedUrl('');
         setUploadProgress(0);
-    };
-
-    // Upload new image to Cloudinary
-    const handleUpload = async () => {
-        const file = fileInputRef.current?.files?.[0];
-        if (!file) { setError('Please select an image first.'); return; }
-        setUploading(true);
-        setUploadProgress(0);
         try {
-            const url = await uploadToCloudinary(file, setUploadProgress);
-            setUploadedUrl(url);
-            setSuccess('✅ Image uploaded to Cloudinary!');
-            setTimeout(() => setSuccess(''), 5000);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setUploading(false);
+            const b64 = await readFileAsBase64(file);
+            setUploadPreview(b64);
+        } catch {
+            setError('Failed to read image file.');
         }
     };
 
-    // Add the uploaded image to gallery_images JSON and save
+    // ── Upload to API (base64 → MongoDB) ──
+    const handleUpload = async () => {
+        const file = fileInputRef.current?.files?.[0];
+        if (!file || !uploadPreview) { setError('Please select an image first.'); return; }
+        if (uploadPreview.length > 4.5 * 1024 * 1024) {
+            setError('Image is too large (max ~3MB). Please compress it first.');
+            return;
+        }
+        setUploading(true);
+        setUploadProgress(30);
+        try {
+            setUploadProgress(60);
+            const { data } = await contentApi.upload(uploadPreview, file.name);
+            setUploadProgress(100);
+            setUploadedUrl(data.url);
+            setSuccess('✅ Photo uploaded successfully!');
+            setTimeout(() => setSuccess(''), 5000);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Upload failed. Please try again.');
+        } finally {
+            setUploading(false);
+            setTimeout(() => setUploadProgress(0), 800);
+        }
+    };
+
+    // ── Add uploaded photo to the gallery_images JSON & save ──
     const addToGallery = async () => {
-        if (!uploadedUrl) { setError('Upload an image first.'); return; }
+        if (!uploadedUrl) { setError('Upload a photo first.'); return; }
         try {
             const galleryStr = editValues['gallery_images'] || '[]';
-            let galleryArr = [];
-            try { galleryArr = JSON.parse(galleryStr); } catch { galleryArr = []; }
-            const newEntry = {
+            let arr = [];
+            try { arr = JSON.parse(galleryStr); } catch { arr = []; }
+            arr.push({
                 src: uploadedUrl,
-                caption: addCaption.trim() || '💕 My Photo',
+                caption: addCaption.trim() || '💕 Our Photo',
                 category: addCategory,
-            };
-            galleryArr.push(newEntry);
-            const newGalleryStr = JSON.stringify(galleryArr, null, 2);
-            await contentApi.update('gallery_images', newGalleryStr);
-            setEditValues(prev => ({ ...prev, gallery_images: newGalleryStr }));
+            });
+            const newStr = JSON.stringify(arr, null, 2);
+            await contentApi.update('gallery_images', newStr);
+            setEditValues(prev => ({ ...prev, gallery_images: newStr }));
             refresh();
             setSuccess('✅ Photo added to gallery!');
-            // Reset upload state
-            setUploadedUrl('');
-            setUploadPreview(null);
-            setAddCaption('');
-            setAddCategory('moments');
-            setUploadProgress(0);
+            setUploadedUrl(''); setUploadPreview(null); setAddCaption(''); setAddCategory('moments');
             if (fileInputRef.current) fileInputRef.current.value = '';
             setTimeout(() => setSuccess(''), 4000);
         } catch {
-            setError('Failed to add photo to gallery.');
+            setError('Failed to save photo to gallery.');
         }
     };
 
-    // Replace an existing image in gallery_images
+    // ── Replace an existing gallery photo ──
     const handleReplaceUpload = async (e) => {
         const file = e.target.files?.[0];
         if (!file || !replaceTarget.trim()) return;
         setUploading(true);
-        setUploadProgress(0);
+        setUploadProgress(30);
         try {
-            const newUrl = await uploadToCloudinary(file, setUploadProgress);
+            const b64 = await readFileAsBase64(file);
+            if (b64.length > 4.5 * 1024 * 1024) {
+                setError('Replacement image too large (max ~3MB).');
+                return;
+            }
+            setUploadProgress(60);
+            const { data } = await contentApi.upload(b64, file.name);
+            setUploadProgress(90);
             const galleryStr = editValues['gallery_images'] || '[]';
-            let galleryArr = [];
-            try { galleryArr = JSON.parse(galleryStr); } catch { galleryArr = []; }
-            const updated = galleryArr.map(img =>
-                img.src === replaceTarget.trim() ? { ...img, src: newUrl } : img
+            let arr = [];
+            try { arr = JSON.parse(galleryStr); } catch { arr = []; }
+            const updated = arr.map(img =>
+                img.src === replaceTarget.trim() ? { ...img, src: data.url } : img
             );
-            const newGalleryStr = JSON.stringify(updated, null, 2);
-            await contentApi.update('gallery_images', newGalleryStr);
-            setEditValues(prev => ({ ...prev, gallery_images: newGalleryStr }));
+            const newStr = JSON.stringify(updated, null, 2);
+            setUploadProgress(100);
+            await contentApi.update('gallery_images', newStr);
+            setEditValues(prev => ({ ...prev, gallery_images: newStr }));
             refresh();
-            setSuccess(`✅ Image replaced! New URL: ${newUrl}`);
+            setSuccess(`✅ Photo replaced! New URL: ${data.url}`);
             setReplaceTarget('');
             if (replaceInputRef.current) replaceInputRef.current.value = '';
             setTimeout(() => setSuccess(''), 6000);
         } catch (err) {
-            setError(err.message || 'Failed to replace image.');
+            setError(err.response?.data?.error || 'Replace failed.');
         } finally {
             setUploading(false);
-            setUploadProgress(0);
+            setTimeout(() => setUploadProgress(0), 800);
         }
     };
 
-    // Remove an image from gallery by src URL
-    const removeFromGallery = async (srcToRemove) => {
+    // ── Remove a photo from gallery ──
+    const removeFromGallery = async (src) => {
         if (!window.confirm('Remove this photo from the gallery?')) return;
         try {
             const galleryStr = editValues['gallery_images'] || '[]';
-            let galleryArr = [];
-            try { galleryArr = JSON.parse(galleryStr); } catch { galleryArr = []; }
-            const updated = galleryArr.filter(img => img.src !== srcToRemove);
-            const newGalleryStr = JSON.stringify(updated, null, 2);
-            await contentApi.update('gallery_images', newGalleryStr);
-            setEditValues(prev => ({ ...prev, gallery_images: newGalleryStr }));
+            let arr = [];
+            try { arr = JSON.parse(galleryStr); } catch { arr = []; }
+            const filtered = arr.filter(img => img.src !== src);
+            const newStr = JSON.stringify(filtered, null, 2);
+            await contentApi.update('gallery_images', newStr);
+            setEditValues(prev => ({ ...prev, gallery_images: newStr }));
             refresh();
-            setSuccess('✅ Photo removed from gallery.');
+            setSuccess('✅ Photo removed.');
             setTimeout(() => setSuccess(''), 3000);
-        } catch {
-            setError('Failed to remove photo.');
-        }
+        } catch { setError('Failed to remove photo.'); }
     };
 
-    // Parse existing gallery images for the visual grid
     const getGalleryImages = () => {
-        try {
-            return JSON.parse(editValues['gallery_images'] || '[]');
-        } catch {
-            return [];
-        }
+        try { return JSON.parse(editValues['gallery_images'] || '[]'); } catch { return []; }
     };
 
-    // Add future item
+    // ── Future item helpers ──
     const addFutureItem = async () => {
         if (!newFuture.title.trim()) { setError('Title is required.'); return; }
         try {
@@ -275,7 +250,7 @@ export default function AdminPanel() {
             setNewFuture({ type: 'game', title: '', description: '', emoji: '✨' });
             setSuccess('Future item added!');
             setTimeout(() => setSuccess(''), 3000);
-        } catch { setError('Failed to add future item.'); }
+        } catch { setError('Failed to add item.'); }
     };
 
     const toggleFutureItem = async (id, enabled) => {
@@ -297,53 +272,37 @@ export default function AdminPanel() {
     const renderField = (field) => (
         <div key={field.key} className="admin-field card-soft">
             <label className="admin-field__label">{field.label}</label>
-            {field.type === 'text' ? (
-                <input
-                    type="text"
-                    className="admin-field__input"
-                    value={editValues[field.key] || ''}
-                    onChange={e => setEditValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                />
-            ) : (
-                <textarea
-                    className={`admin-field__textarea ${field.type === 'textarea-large' ? 'admin-field__textarea--large' : ''}`}
-                    value={editValues[field.key] || ''}
-                    onChange={e => setEditValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                    rows={field.type === 'textarea-large' ? 8 : 3}
-                />
-            )}
+            {field.type === 'text'
+                ? <input type="text" className="admin-field__input" value={editValues[field.key] || ''} onChange={e => setEditValues(prev => ({ ...prev, [field.key]: e.target.value }))} />
+                : <textarea className={`admin-field__textarea ${field.type === 'textarea-large' ? 'admin-field__textarea--large' : ''}`} value={editValues[field.key] || ''} onChange={e => setEditValues(prev => ({ ...prev, [field.key]: e.target.value }))} rows={field.type === 'textarea-large' ? 8 : 3} />
+            }
             <div className="admin-field__actions">
-                <button
-                    className="btn-primary admin-save-btn"
-                    onClick={() => saveField(field.key)}
-                    disabled={saving[field.key]}
-                >
+                <button className="btn-primary admin-save-btn" onClick={() => saveField(field.key)} disabled={saving[field.key]}>
                     {saving[field.key] ? '⏳ Saving…' : saved[field.key] ? '✅ Saved!' : '💾 Save'}
                 </button>
             </div>
         </div>
     );
 
-    if (loading) {
-        return (
-            <div className="admin-page page-wrapper bg-lav-dream flex-col-center">
-                <div className="messages-loading">
-                    <span className="animate-pulse-heart" style={{ fontSize: '2.5rem' }}>🛠️</span>
-                    <p className="text-soft">Loading admin panel…</p>
-                </div>
+    if (loading) return (
+        <div className="admin-page page-wrapper bg-lav-dream flex-col-center">
+            <div className="messages-loading">
+                <span className="animate-pulse-heart" style={{ fontSize: '2.5rem' }}>🛠️</span>
+                <p className="text-soft">Loading admin panel…</p>
             </div>
-        );
-    }
+        </div>
+    );
 
     const galleryImages = getGalleryImages();
 
     return (
         <div className="admin-page page-wrapper bg-lav-dream">
             <div className="admin-container">
+
                 {/* ── Header ─── */}
                 <div className="admin-header">
                     <div className="admin-header__left">
-                        <button className="dm-back" onClick={() => navigate('/')} aria-label="Go back">← Back</button>
+                        <button className="dm-back" onClick={() => navigate('/')}>← Back</button>
                         <h1 className="admin-title">🛡️ Admin Panel</h1>
                     </div>
                     <span className="admin-user">{user?.avatar} {user?.name}</span>
@@ -353,8 +312,7 @@ export default function AdminPanel() {
                 <AnimatePresence>
                     {error && (
                         <motion.div className="admin-alert admin-alert--error" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                            💔 {error}
-                            <button onClick={() => setError('')}>✕</button>
+                            💔 {error}<button onClick={() => setError('')}>✕</button>
                         </motion.div>
                     )}
                     {success && (
@@ -367,55 +325,45 @@ export default function AdminPanel() {
                 {/* ── Tabs ─── */}
                 <div className="admin-tabs">
                     {TABS.map(tab => (
-                        <button
-                            key={tab.key}
-                            className={`admin-tab ${activeTab === tab.key ? 'admin-tab--active' : ''}`}
-                            onClick={() => setActiveTab(tab.key)}
-                        >
+                        <button key={tab.key} className={`admin-tab ${activeTab === tab.key ? 'admin-tab--active' : ''}`} onClick={() => setActiveTab(tab.key)}>
                             {tab.label}
                         </button>
                     ))}
                 </div>
 
-                {/* ══════════════════════════════════════ */}
-                {/* TEXT TAB */}
-                {/* ══════════════════════════════════════ */}
+                {/* ════════════════ TEXT ════════════════ */}
                 {activeTab === 'text' && (
                     <div className="admin-section">
                         <h2 className="admin-section-title">📝 Edit Website Text</h2>
-                        <p className="text-soft" style={{ marginBottom: '1rem' }}>Change any text on the website. Click "Save" after each field.</p>
+                        <p className="text-soft" style={{ marginBottom: '1rem' }}>Change any text. Click "Save" after each field.</p>
                         <div className="admin-fields">{TEXT_FIELDS.map(renderField)}</div>
                     </div>
                 )}
 
-                {/* ══════════════════════════════════════ */}
-                {/* STRUCTURED TAB */}
-                {/* ══════════════════════════════════════ */}
+                {/* ════════════════ STRUCTURED ════════════════ */}
                 {activeTab === 'structured' && (
                     <div className="admin-section">
                         <h2 className="admin-section-title">📋 Edit Section Data</h2>
-                        <p className="text-soft" style={{ marginBottom: '1rem' }}>Edit structured JSON data. Double-check the format before saving.</p>
+                        <p className="text-soft" style={{ marginBottom: '1rem' }}>Edit JSON data — use valid JSON arrays.</p>
                         <div className="admin-fields">{STRUCTURED_FIELDS.map(renderField)}</div>
                     </div>
                 )}
 
-                {/* ══════════════════════════════════════ */}
-                {/* FUTURE TAB */}
-                {/* ══════════════════════════════════════ */}
+                {/* ════════════════ FUTURE ════════════════ */}
                 {activeTab === 'future' && (
                     <div className="admin-section">
                         <h2 className="admin-section-title">🔮 Our Future — Items</h2>
                         <div className="admin-add-future card-soft">
                             <h3 className="admin-subsection-title">➕ Add New Item</h3>
                             <div className="admin-future-form">
-                                <select className="admin-field__input" value={newFuture.type} onChange={e => setNewFuture(prev => ({ ...prev, type: e.target.value }))}>
+                                <select className="admin-field__input" value={newFuture.type} onChange={e => setNewFuture(p => ({ ...p, type: e.target.value }))}>
                                     <option value="game">🎯 Game</option>
                                     <option value="dare">💪 Love Dare</option>
                                     <option value="surprise">🎁 Surprise</option>
                                 </select>
-                                <input type="text" className="admin-field__input" placeholder="Title" value={newFuture.title} onChange={e => setNewFuture(prev => ({ ...prev, title: e.target.value }))} />
-                                <input type="text" className="admin-field__input" placeholder="Description" value={newFuture.description} onChange={e => setNewFuture(prev => ({ ...prev, description: e.target.value }))} />
-                                <input type="text" className="admin-field__input admin-field__input--emoji" placeholder="Emoji" value={newFuture.emoji} onChange={e => setNewFuture(prev => ({ ...prev, emoji: e.target.value }))} maxLength={4} />
+                                <input type="text" className="admin-field__input" placeholder="Title" value={newFuture.title} onChange={e => setNewFuture(p => ({ ...p, title: e.target.value }))} />
+                                <input type="text" className="admin-field__input" placeholder="Description" value={newFuture.description} onChange={e => setNewFuture(p => ({ ...p, description: e.target.value }))} />
+                                <input type="text" className="admin-field__input admin-field__input--emoji" placeholder="Emoji" value={newFuture.emoji} onChange={e => setNewFuture(p => ({ ...p, emoji: e.target.value }))} maxLength={4} />
                                 <button className="btn-primary" onClick={addFutureItem}>➕ Add</button>
                             </div>
                         </div>
@@ -425,8 +373,7 @@ export default function AdminPanel() {
                                     <div className="admin-future-item__info">
                                         <span className="admin-future-item__emoji">{item.emoji}</span>
                                         <div>
-                                            <strong>{item.title}</strong>
-                                            <span className="admin-future-item__type">{item.type}</span>
+                                            <strong>{item.title}</strong><span className="admin-future-item__type">{item.type}</span>
                                             <p className="text-soft">{item.description}</p>
                                         </div>
                                     </div>
@@ -443,58 +390,33 @@ export default function AdminPanel() {
                     </div>
                 )}
 
-                {/* ══════════════════════════════════════ */}
-                {/* IMAGES TAB */}
-                {/* ══════════════════════════════════════ */}
+                {/* ════════════════ IMAGES ════════════════ */}
                 {activeTab === 'images' && (
                     <div className="admin-section">
                         <h2 className="admin-section-title">📸 Upload & Manage Photos</h2>
 
-                        {/* ── Cloudinary Setup Notice ─── */}
-                        {!cloudinaryConfigured && (
-                            <motion.div className="admin-cloudinary-notice" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}>
-                                <div className="admin-cloudinary-notice__icon">☁️</div>
-                                <div className="admin-cloudinary-notice__body">
-                                    <strong>Setup Required — Cloudinary (Free Image Hosting)</strong>
-                                    <p>Vercel serverless cannot store files. You need a free Cloudinary account to upload photos permanently.</p>
-                                    <ol className="admin-help-list" style={{ marginTop: '0.6rem' }}>
-                                        <li>Go to <a href="https://cloudinary.com" target="_blank" rel="noreferrer" className="admin-link">cloudinary.com</a> → Sign up free</li>
-                                        <li>In your Dashboard, copy your <strong>Cloud Name</strong></li>
-                                        <li>Go to <strong>Settings → Upload → Upload presets</strong></li>
-                                        <li>Click <strong>"Add upload preset"</strong> → set Signing mode to <strong>Unsigned</strong> → Save</li>
-                                        <li>Copy the preset name</li>
-                                        <li>In Vercel → your project → <strong>Settings → Environment Variables</strong>, add:</li>
-                                    </ol>
-                                    <div className="admin-cloudinary-env">
-                                        <code>VITE_CLOUDINARY_CLOUD_NAME = your_cloud_name</code>
-                                        <code>VITE_CLOUDINARY_UPLOAD_PRESET = your_preset_name</code>
-                                    </div>
-                                    <p style={{ marginTop: '0.5rem', fontSize: '0.72rem', color: '#9b6b8a' }}>After adding env vars, redeploy once and uploads will work! ✨</p>
-                                </div>
-                            </motion.div>
-                        )}
+                        {/* ── How it works ─── */}
+                        <div className="admin-cloudinary-notice" style={{ marginBottom: '1rem' }}>
+                            <div className="admin-cloudinary-notice__icon">💡</div>
+                            <div className="admin-cloudinary-notice__body">
+                                <strong>Direct Upload — No External Service Needed!</strong>
+                                <p>Photos are uploaded directly to your database and served via the API. Works instantly on Vercel — no setup required.</p>
+                                <p style={{ marginTop: '0.3rem', color: '#a855f7', fontSize: '0.73rem' }}>📦 Max size per photo: ~3 MB &nbsp;·&nbsp; Supported: JPG, PNG, GIF, WebP</p>
+                            </div>
+                        </div>
 
                         {/* ── Upload New Photo ─── */}
-                        <div className="admin-upload card-soft" style={{ marginTop: '1rem' }}>
-                            <h3 className="admin-subsection-title">⬆️ Upload New Photo to Cloudinary</h3>
+                        <div className="admin-upload card-soft">
+                            <h3 className="admin-subsection-title">⬆️ Upload New Photo</h3>
 
-                            {/* File picker */}
                             <label className="admin-upload__label" htmlFor="admin-image-upload">
                                 <span className="admin-upload__icon">{uploading ? '⏳' : uploadPreview ? '✅' : '📁'}</span>
-                                <span>{uploading ? `Uploading… ${uploadProgress}%` : 'Click to choose a photo'}</span>
-                                <input
-                                    ref={fileInputRef}
-                                    id="admin-image-upload"
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleFileChange}
-                                    className="admin-upload__input"
-                                    disabled={uploading}
-                                />
+                                <span>{uploading ? `Uploading… ${uploadProgress}%` : uploadPreview ? 'Image selected — ready to upload' : 'Click to choose a photo from your device'}</span>
+                                <input ref={fileInputRef} id="admin-image-upload" type="file" accept="image/*" onChange={handleFileChange} className="admin-upload__input" disabled={uploading} />
                             </label>
 
                             {/* Progress bar */}
-                            {uploading && (
+                            {(uploading || uploadProgress > 0) && (
                                 <div className="admin-upload-progress">
                                     <div className="admin-upload-progress__bar" style={{ width: `${uploadProgress}%` }} />
                                 </div>
@@ -507,17 +429,17 @@ export default function AdminPanel() {
                                 </div>
                             )}
 
-                            {/* Upload button */}
-                            {uploadPreview && !uploadedUrl && (
+                            {/* Upload button — only show when preview ready but not uploaded yet */}
+                            {uploadPreview && !uploadedUrl && !uploading && (
                                 <motion.button
                                     className="btn-primary"
                                     style={{ marginTop: '0.8rem', width: '100%' }}
                                     onClick={handleUpload}
-                                    disabled={uploading || !cloudinaryConfigured}
-                                    whileHover={{ scale: cloudinaryConfigured ? 1.02 : 1 }}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.97 }}
                                     id="admin-upload-btn"
                                 >
-                                    {uploading ? `⏳ Uploading ${uploadProgress}%…` : '☁️ Upload to Cloudinary'}
+                                    ☁️ Upload to Server
                                 </motion.button>
                             )}
 
@@ -525,35 +447,17 @@ export default function AdminPanel() {
                             {uploadedUrl && (
                                 <motion.div className="admin-upload-success" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                                     <div className="admin-upload-success__url">
-                                        <span>🔗 URL:</span>
-                                        <input
-                                            type="text"
-                                            readOnly
-                                            value={uploadedUrl}
-                                            className="admin-field__input"
-                                            onClick={e => e.target.select()}
-                                        />
+                                        <span>🔗</span>
+                                        <input type="text" readOnly value={uploadedUrl} className="admin-field__input" onClick={e => e.target.select()} title="Click to select URL" />
                                     </div>
                                     <div className="admin-upload-success__meta">
                                         <div>
                                             <label className="admin-field__label">Caption</label>
-                                            <input
-                                                type="text"
-                                                className="admin-field__input"
-                                                placeholder="e.g. Our first date ☕"
-                                                value={addCaption}
-                                                onChange={e => setAddCaption(e.target.value)}
-                                                id="admin-caption-input"
-                                            />
+                                            <input type="text" className="admin-field__input" placeholder="e.g. Our first date ☕" value={addCaption} onChange={e => setAddCaption(e.target.value)} id="admin-caption-input" />
                                         </div>
                                         <div>
                                             <label className="admin-field__label">Category</label>
-                                            <select
-                                                className="admin-field__input"
-                                                value={addCategory}
-                                                onChange={e => setAddCategory(e.target.value)}
-                                                id="admin-category-select"
-                                            >
+                                            <select className="admin-field__input" value={addCategory} onChange={e => setAddCategory(e.target.value)} id="admin-category-select">
                                                 <option value="moments">🌸 Moments</option>
                                                 <option value="adventures">🗺️ Adventures</option>
                                                 <option value="dates">☕ Dates</option>
@@ -561,14 +465,16 @@ export default function AdminPanel() {
                                             </select>
                                         </div>
                                     </div>
-                                    <button
+                                    <motion.button
                                         className="btn-primary"
-                                        style={{ marginTop: '0.6rem', width: '100%' }}
+                                        style={{ width: '100%' }}
                                         onClick={addToGallery}
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.97 }}
                                         id="admin-add-gallery-btn"
                                     >
                                         📸 Add to Gallery
-                                    </button>
+                                    </motion.button>
                                 </motion.div>
                             )}
                         </div>
@@ -577,12 +483,12 @@ export default function AdminPanel() {
                         <div className="admin-upload card-soft" style={{ marginTop: '1rem' }}>
                             <h3 className="admin-subsection-title">🔄 Replace an Existing Photo</h3>
                             <p className="text-soft" style={{ fontSize: '0.75rem', marginBottom: '0.6rem' }}>
-                                Enter the URL of the photo you want to replace, then pick a new image.
+                                Click 🔄 on any photo below to auto-fill the URL, then pick a replacement.
                             </p>
                             <input
                                 type="text"
                                 className="admin-field__input"
-                                placeholder="https://res.cloudinary.com/…  or paste URL from gallery below"
+                                placeholder="Paste or click 🔄 below to fill the URL…"
                                 value={replaceTarget}
                                 onChange={e => setReplaceTarget(e.target.value)}
                                 id="admin-replace-url-input"
@@ -590,16 +496,8 @@ export default function AdminPanel() {
                             {replaceTarget.trim() && (
                                 <label className="admin-upload__label admin-upload__label--replace" style={{ marginTop: '0.6rem' }} htmlFor="admin-image-replace">
                                     <span className="admin-upload__icon">{uploading ? '⏳' : '🔄'}</span>
-                                    <span>{uploading ? `Replacing… ${uploadProgress}%` : 'Choose replacement image'}</span>
-                                    <input
-                                        ref={replaceInputRef}
-                                        id="admin-image-replace"
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleReplaceUpload}
-                                        className="admin-upload__input"
-                                        disabled={uploading}
-                                    />
+                                    <span>{uploading ? `Replacing… ${uploadProgress}%` : 'Choose replacement photo'}</span>
+                                    <input ref={replaceInputRef} id="admin-image-replace" type="file" accept="image/*" onChange={handleReplaceUpload} className="admin-upload__input" disabled={uploading} />
                                 </label>
                             )}
                         </div>
@@ -607,31 +505,19 @@ export default function AdminPanel() {
                         {/* ── Current Gallery Grid ─── */}
                         {galleryImages.length > 0 && (
                             <div className="admin-upload card-soft" style={{ marginTop: '1rem' }}>
-                                <h3 className="admin-subsection-title">🖼️ Current Gallery Photos ({galleryImages.length})</h3>
-                                <p className="text-soft" style={{ fontSize: '0.73rem', marginBottom: '0.7rem' }}>
-                                    Click a photo URL to copy it into the Replace field. Use 🗑️ to remove.
+                                <h3 className="admin-subsection-title">🖼️ Gallery Photos ({galleryImages.length})</h3>
+                                <p className="text-soft" style={{ fontSize: '0.72rem', marginBottom: '0.7rem' }}>
+                                    Hover a photo → click 🔄 to fill replace URL, 🗑️ to remove.
                                 </p>
                                 <div className="admin-gallery-grid">
                                     {galleryImages.map((img, i) => (
                                         <div key={i} className="admin-gallery-thumb">
-                                            <img
-                                                src={img.src}
-                                                alt={img.caption}
-                                                loading="lazy"
-                                            />
+                                            <img src={img.src} alt={img.caption} loading="lazy" />
                                             <div className="admin-gallery-thumb__overlay">
                                                 <span className="admin-gallery-thumb__caption">{img.caption}</span>
                                                 <div className="admin-gallery-thumb__actions">
-                                                    <button
-                                                        className="admin-gallery-thumb__btn"
-                                                        onClick={() => setReplaceTarget(img.src)}
-                                                        title="Use URL for replace"
-                                                    >🔄</button>
-                                                    <button
-                                                        className="admin-gallery-thumb__btn admin-gallery-thumb__btn--del"
-                                                        onClick={() => removeFromGallery(img.src)}
-                                                        title="Remove from gallery"
-                                                    >🗑️</button>
+                                                    <button className="admin-gallery-thumb__btn" onClick={() => setReplaceTarget(img.src)} title="Use this URL for replace">🔄</button>
+                                                    <button className="admin-gallery-thumb__btn admin-gallery-thumb__btn--del" onClick={() => removeFromGallery(img.src)} title="Remove from gallery">🗑️</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -641,6 +527,7 @@ export default function AdminPanel() {
                         )}
                     </div>
                 )}
+
             </div>
         </div>
     );

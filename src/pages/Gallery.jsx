@@ -38,27 +38,28 @@ export default function Gallery() {
     const subtitle = getText('gallery_subtitle', 'Moments too beautiful to forget — each one a treasure.');
     const rawPhotos = getJSON('gallery_images', DEFAULT_PHOTOS);
 
-    // Ensure each photo has a category (backwards-compat with stored data without category)
+    // Ensure each photo has a category (backwards-compat)
     const allPhotos = rawPhotos.map((p, i) => ({
         ...p,
         category: p.category || DEFAULT_PHOTOS[i % DEFAULT_PHOTOS.length]?.category || 'moments',
     }));
 
-    // Filter by active category
     const filteredPhotos = activeCategory === 'all'
         ? allPhotos
         : allPhotos.filter(p => p.category === activeCategory);
 
-    const displayed = expanded ? filteredPhotos : filteredPhotos.slice(0, PREVIEW_COUNT);
+    const previewPhotos = filteredPhotos.slice(0, PREVIEW_COUNT);
+    const morePhotos = filteredPhotos.slice(PREVIEW_COUNT);
     const hasMore = filteredPhotos.length > PREVIEW_COUNT;
 
     const handleCategoryChange = (cat) => {
         setActiveCategory(cat);
-        setExpanded(false); // Reset expanded when changing category
+        setExpanded(false); // reset expand on filter switch
     };
 
     return (
         <div className="gallery page-wrapper bg-rose-dream">
+            {/* ── Hero ─── */}
             <div className="gallery__hero container">
                 <motion.h1
                     className="heading-hero"
@@ -78,7 +79,7 @@ export default function Gallery() {
                 </motion.p>
             </div>
 
-            {/* ── Gallery Navbar (Flexbox) ─── */}
+            {/* ── Category Filter Navbar ─── */}
             <nav className="gallery__navbar" aria-label="Gallery filter">
                 {CATEGORIES.map(cat => (
                     <motion.button
@@ -93,30 +94,36 @@ export default function Gallery() {
                         {cat.label}
                     </motion.button>
                 ))}
-                {/* View More button in navbar when there are more photos */}
-                {hasMore && (
-                    <motion.button
-                        className="gallery__navbar-btn gallery__navbar-btn--viewmore"
-                        onClick={() => setExpanded(v => !v)}
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.95 }}
-                        id="gallery-view-more-btn"
-                    >
-                        {expanded ? '💨 Show Less' : `📷 View More (${filteredPhotos.length - PREVIEW_COUNT}+)`}
-                    </motion.button>
-                )}
             </nav>
 
+            {/* ── Photo Grid ─── */}
             <div className="gallery__grid container">
-                <AnimatePresence>
-                    {displayed.map((photo, i) => (
+                <AnimatePresence initial={false}>
+                    {/* Always-visible preview */}
+                    {previewPhotos.map((photo, i) => (
                         <motion.div
                             key={photo.src + i}
                             className="gallery__item"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.85 }}
-                            transition={{ delay: i < PREVIEW_COUNT ? i * 0.06 : (i - PREVIEW_COUNT) * 0.07, duration: 0.5 }}
+                            transition={{ delay: i * 0.06, duration: 0.45 }}
+                            onClick={() => setLightbox(photo)}
+                        >
+                            <img src={photo.src} alt={photo.caption} loading="lazy" />
+                            <div className="gallery__caption"><span>{photo.caption}</span></div>
+                        </motion.div>
+                    ))}
+
+                    {/* Expanded section — same AnimatePresence pattern as About section */}
+                    {expanded && morePhotos.map((photo, i) => (
+                        <motion.div
+                            key={photo.src + 'more' + i}
+                            className="gallery__item"
+                            initial={{ opacity: 0, scale: 0.88 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.88 }}
+                            transition={{ delay: i * 0.07, duration: 0.45, type: 'spring', stiffness: 140 }}
                             onClick={() => setLightbox(photo)}
                         >
                             <img src={photo.src} alt={photo.caption} loading="lazy" />
@@ -124,11 +131,11 @@ export default function Gallery() {
                         </motion.div>
                     ))}
                 </AnimatePresence>
-                {displayed.length === 0 && (
+
+                {/* Empty state */}
+                {filteredPhotos.length === 0 && (
                     <motion.div
-                        className="gallery__empty"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                         style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem', color: '#9b6b8a' }}
                     >
                         <span style={{ fontSize: '2.5rem' }}>📷</span>
@@ -137,21 +144,34 @@ export default function Gallery() {
                 )}
             </div>
 
+            {/* ── "View More" — same style as About section ─── */}
+            {hasMore && (
+                <div className="view-more-wrapper">
+                    <motion.button
+                        className={expanded ? 'btn-ghost' : 'btn-primary'}
+                        onClick={() => setExpanded(v => !v)}
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.96 }}
+                        id="gallery-view-more-btn"
+                    >
+                        {expanded
+                            ? '💨 Show Less'
+                            : `📷 View More (${morePhotos.length} more)`}
+                    </motion.button>
+                </div>
+            )}
+
             {/* ── Lightbox ─── */}
             <AnimatePresence>
                 {lightbox && (
                     <motion.div
                         className="lightbox"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={() => setLightbox(null)}
                     >
                         <motion.div
                             className="lightbox__inner"
-                            initial={{ scale: 0.8, y: 40 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.8, y: 40 }}
+                            initial={{ scale: 0.8, y: 40 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.8, y: 40 }}
                             onClick={e => e.stopPropagation()}
                         >
                             <img src={lightbox.src} alt={lightbox.caption} />

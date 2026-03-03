@@ -623,6 +623,59 @@ app.put('/api/content/:key', protect, adminOnly, async (req, res) => {
     } catch { res.status(500).json({ error: 'Failed to update.' }); }
 });
 
+// ── POST /api/content/upload — Upload image as base64, stored in MongoDB ──
+app.post('/api/content/upload', protect, adminOnly, async (req, res) => {
+    try {
+        const { base64, name } = req.body;
+        if (!base64) return res.status(400).json({ error: 'base64 image data required.' });
+        // Guard: max ~4MB base64 string (≈3MB actual image)
+        if (base64.length > 4.5 * 1024 * 1024) {
+            return res.status(413).json({ error: 'Image too large. Please use an image under 3MB.' });
+        }
+        // Validate it’s a data URL
+        if (!base64.startsWith('data:image/')) {
+            return res.status(400).json({ error: 'Invalid image format. Must be a data URL.' });
+        }
+        // Generate unique key
+        const imgKey = 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+        await Content.findOneAndUpdate(
+            { key: imgKey },
+            { key: imgKey, value: base64 },
+            { upsert: true, new: true }
+        );
+        const url = `/api/content/image/${imgKey}`;
+        res.json({ url, key: imgKey, name: name || imgKey });
+    } catch (err) {
+        console.error('Upload error:', err);
+        res.status(500).json({ error: 'Upload failed. Please try again.' });
+    }
+});
+
+// ── GET /api/content/image/:key — Serve a stored image from MongoDB ──
+app.get('/api/content/image/:key', async (req, res) => {
+    try {
+        await connectDB();
+        const item = await Content.findOne({ key: req.params.key });
+        if (!item) return res.status(404).json({ error: 'Image not found.' });
+        const base64Data = item.value;
+        if (typeof base64Data !== 'string' || !base64Data.startsWith('data:image/')) {
+            return res.status(400).json({ error: 'Not an image record.' });
+        }
+        // Parse data URL: data:<mime>;base64,<data>
+        const commaIdx = base64Data.indexOf(',');
+        const header = base64Data.substring(5, commaIdx); // e.g. 'image/jpeg;base64'
+        const mimeType = header.split(';')[0];             // e.g. 'image/jpeg'
+        const imageBuffer = Buffer.from(base64Data.substring(commaIdx + 1), 'base64');
+        res.set('Content-Type', mimeType);
+        res.set('Cache-Control', 'public, max-age=31536000, immutable');
+        res.set('X-Content-Type-Options', 'nosniff');
+        res.send(imageBuffer);
+    } catch (err) {
+        console.error('Image serve error:', err);
+        res.status(500).json({ error: 'Failed to serve image.' });
+    }
+});
+
 // ═══════════════════════════════════════════════
 // ADMIN FUTURE ROUTES
 // ═══════════════════════════════════════════════

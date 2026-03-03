@@ -65,9 +65,8 @@ export const messagesApi = {
 export const contentApi = {
     getAll: () => api.get('/content'),
     update: (key, value) => api.put(`/content/${key}`, { value }),
-    upload: (formData) => api.post('/content/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    // Upload image as base64 (stored in MongoDB — works on Vercel!)
+    upload: (base64, name) => api.post('/content/upload', { base64, name }),
     // Future items
     getFuture: () => api.get('/content/future'),
     addFuture: (item) => api.post('/content/future', item),

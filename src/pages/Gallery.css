@@ -68,28 +68,12 @@
     transform: translateY(-1px);
 }
 
-/* View More button — matches gallery navbar style */
-.gallery__navbar-btn--viewmore {
-    background: linear-gradient(135deg, #e83e6c, #a855f7);
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 4px 16px rgba(232, 62, 108, 0.25);
-    padding: 0.42rem 1.3rem;
-}
-
-.gallery__navbar-btn--viewmore:hover {
-    background: linear-gradient(135deg, #c0294e, #7c3aed);
-    color: #fff;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 22px rgba(232, 62, 108, 0.35);
-}
-
 /* ── FIXED: Uniform grid with equal sizing ─── */
 .gallery__grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
-    padding: 1rem 1.2rem 4rem;
+    padding: 1rem 1.2rem 1.5rem;
     position: relative;
     z-index: 1;
 }
