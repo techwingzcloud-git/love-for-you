@@ -362,6 +362,26 @@ app.get('/api/auth/partner', protect, async (req, res) => {
     res.json({ id: partner._id, name: partner.name, avatar: partner.avatar });
 });
 
+// ── PATCH /api/auth/profile — Update display name & avatar ──
+app.patch('/api/auth/profile', protect, async (req, res) => {
+    try {
+        const { name, avatar } = req.body;
+        if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required.' });
+        const trimmedName = name.trim().substring(0, 32);
+        const safeAvatar = avatar && avatar.length <= 4 ? avatar : req.user.avatar;
+        const updated = await User.findByIdAndUpdate(
+            req.user._id,
+            { name: trimmedName, avatar: safeAvatar },
+            { new: true }
+        );
+        if (!updated) return res.status(404).json({ error: 'User not found.' });
+        res.json({ id: updated._id, name: updated.name, email: updated.email, role: updated.role, avatar: updated.avatar });
+    } catch (err) {
+        console.error('Profile update error:', err);
+        res.status(500).json({ error: 'Failed to update profile.' });
+    }
+});
+
 // ═══════════════════════════════════════════════
 // OTP RECOVERY ROUTES
 // ═══════════════════════════════════════════════
@@ -566,11 +586,19 @@ app.get('/api/messages/unread', protect, async (req, res) => {
 });
 
 app.delete('/api/messages/:id', protect, async (req, res) => {
-    const msg = await Message.findById(req.params.id);
-    if (!msg) return res.status(404).json({ error: 'Not found.' });
-    if (msg.senderId.toString() !== req.user._id.toString()) return res.status(403).json({ error: 'Not your message.' });
-    await Message.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
+    try {
+        const msg = await Message.findById(req.params.id);
+        if (!msg) return res.status(404).json({ error: 'Message not found.' });
+        // Admins can delete any message; users can only delete their own
+        const isAdmin = req.user.role === 'admin';
+        if (!isAdmin && msg.senderId.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: 'You can only delete your own messages.' });
+        }
+        await Message.findByIdAndDelete(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete message.' });
+    }
 });
 
 // ═══════════════════════════════════════════════
