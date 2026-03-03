@@ -40,13 +40,33 @@ const STRUCTURED_FIELDS = [
     { key: 'memories_items', label: 'Memories Timeline Items (JSON array)', type: 'textarea-large' },
 ];
 
-// Read a File as a base64 data URL
-function readFileAsBase64(file) {
+// Compress + resize image on the client before uploading
+// Keeps payload under 1MB — well within Vercel's 4.5MB limit
+function compressImage(file, { maxWidth = 1200, maxHeight = 1200, quality = 0.82 } = {}) {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            // Calculate scaled dimensions
+            let { width, height } = img;
+            if (width > maxWidth || height > maxHeight) {
+                const ratio = Math.min(maxWidth / width, maxHeight / height);
+                width = Math.round(width * ratio);
+                height = Math.round(height * ratio);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            // Use JPEG for best compression; fall back to original type for PNGs with transparency
+            const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+            const outputQuality = outputType === 'image/png' ? undefined : quality;
+            resolve(canvas.toDataURL(outputType, outputQuality));
+        };
+        img.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('Failed to load image.')); };
+        img.src = objectUrl;
     });
 }
 
@@ -125,26 +145,26 @@ export default function AdminPanel() {
         setUploadedUrl('');
         setUploadProgress(0);
         try {
-            const b64 = await readFileAsBase64(file);
-            setUploadPreview(b64);
+            setUploadProgress(10);
+            const compressed = await compressImage(file);
+            setUploadProgress(0);
+            setUploadPreview(compressed);
         } catch {
             setError('Failed to read image file.');
         }
     };
 
-    // ── Upload to API (base64 → MongoDB) ──
+    // ── Upload to API (compressed base64 → MongoDB) ──
     const handleUpload = async () => {
         const file = fileInputRef.current?.files?.[0];
         if (!file || !uploadPreview) { setError('Please select an image first.'); return; }
-        if (uploadPreview.length > 4.5 * 1024 * 1024) {
-            setError('Image is too large (max ~3MB). Please compress it first.');
-            return;
-        }
         setUploading(true);
-        setUploadProgress(30);
+        setUploadProgress(20);
         try {
-            setUploadProgress(60);
-            const { data } = await contentApi.upload(uploadPreview, file.name);
+            // Re-compress to final quality before sending
+            const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.82 });
+            setUploadProgress(50);
+            const { data } = await contentApi.upload(compressed, file.name);
             setUploadProgress(100);
             setUploadedUrl(data.url);
             setSuccess('✅ Photo uploaded successfully!');
@@ -187,16 +207,12 @@ export default function AdminPanel() {
         const file = e.target.files?.[0];
         if (!file || !replaceTarget.trim()) return;
         setUploading(true);
-        setUploadProgress(30);
+        setUploadProgress(20);
         try {
-            const b64 = await readFileAsBase64(file);
-            if (b64.length > 4.5 * 1024 * 1024) {
-                setError('Replacement image too large (max ~3MB).');
-                return;
-            }
-            setUploadProgress(60);
-            const { data } = await contentApi.upload(b64, file.name);
-            setUploadProgress(90);
+            const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.82 });
+            setUploadProgress(50);
+            const { data } = await contentApi.upload(compressed, file.name);
+            setUploadProgress(80);
             const galleryStr = editValues['gallery_images'] || '[]';
             let arr = [];
             try { arr = JSON.parse(galleryStr); } catch { arr = []; }

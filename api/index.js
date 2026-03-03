@@ -158,7 +158,7 @@ async function sendOTPviaSMS(mobileNumber, otp) {
     }
 }
 
-// ── Middleware ─────────────────────────────────────────────────
+// Global middleware — keep small limit for all routes except upload
 app.use(cors({
     origin: (origin, cb) => {
         if (!origin || origin.endsWith('.vercel.app') ||
@@ -169,7 +169,10 @@ app.use(cors({
     },
     credentials: true,
 }));
-app.use(express.json({ limit: '10kb' }));
+// Use a larger limit globally so the upload route can receive base64 images
+// Vercel's hard limit is 4.5 MB per serverless invocation
+app.use(express.json({ limit: '4.5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '4.5mb' }));
 
 // Connect DB before each request, then auto-seed on first boot
 app.use(async (req, res, next) => {
