@@ -409,6 +409,188 @@
     color: #a855f7;
 }
 
+.admin-link {
+    color: #e83e6c;
+    text-decoration: underline;
+    font-weight: 600;
+}
+
+/* ── Cloudinary notice ─── */
+.admin-cloudinary-notice {
+    display: flex;
+    gap: 0.8rem;
+    background: linear-gradient(135deg, rgba(255, 240, 245, 0.9), rgba(240, 230, 255, 0.9));
+    border: 1.5px solid rgba(168, 85, 247, 0.22);
+    border-radius: 1rem;
+    padding: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.admin-cloudinary-notice__icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.admin-cloudinary-notice__body {
+    flex: 1;
+    font-size: 0.8rem;
+    color: #5a3060;
+    line-height: 1.6;
+}
+
+.admin-cloudinary-notice__body strong {
+    font-size: 0.88rem;
+    color: #a855f7;
+    display: block;
+    margin-bottom: 0.3rem;
+}
+
+.admin-cloudinary-env {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.6rem;
+    background: rgba(168, 85, 247, 0.07);
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.8rem;
+}
+
+.admin-cloudinary-env code {
+    font-size: 0.72rem;
+    color: #7c3aed;
+    background: transparent;
+    font-family: 'Courier New', monospace;
+}
+
+/* ── Progress bar ─── */
+.admin-upload-progress {
+    height: 5px;
+    background: rgba(255, 133, 169, 0.15);
+    border-radius: 9999px;
+    overflow: hidden;
+    margin-top: 0.6rem;
+}
+
+.admin-upload-progress__bar {
+    height: 100%;
+    background: linear-gradient(90deg, #ff85a9, #a855f7);
+    border-radius: 9999px;
+    transition: width 0.3s ease;
+}
+
+/* ── Post-upload success block ─── */
+.admin-upload-success {
+    margin-top: 0.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.admin-upload-success__url {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.72rem;
+    color: #16a34a;
+    font-weight: 600;
+}
+
+.admin-upload-success__url input {
+    flex: 1;
+    font-size: 0.68rem;
+    color: #4b0082;
+    cursor: text;
+}
+
+.admin-upload-success__meta {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+/* ── Gallery thumbnail grid in admin ─── */
+.admin-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+}
+
+.admin-gallery-thumb {
+    position: relative;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    aspect-ratio: 1 / 1;
+    cursor: pointer;
+}
+
+.admin-gallery-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s;
+}
+
+.admin-gallery-thumb:hover img {
+    transform: scale(1.06);
+}
+
+.admin-gallery-thumb__overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(30, 0, 20, 0.55);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    padding: 0.4rem;
+}
+
+.admin-gallery-thumb:hover .admin-gallery-thumb__overlay {
+    opacity: 1;
+}
+
+.admin-gallery-thumb__caption {
+    font-size: 0.65rem;
+    color: #fff;
+    text-align: center;
+    font-family: 'Dancing Script', cursive;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-gallery-thumb__actions {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.admin-gallery-thumb__btn {
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 50%;
+    width: 26px;
+    height: 26px;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s;
+    border: none;
+}
+
+.admin-gallery-thumb__btn:hover {
+    transform: scale(1.15);
+}
+
+.admin-gallery-thumb__btn--del {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+
 /* ── Loading ─── */
 .messages-loading {
     display: flex;
