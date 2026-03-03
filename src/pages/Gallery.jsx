@@ -26,7 +26,7 @@ const CATEGORIES = [
     { key: 'portraits', label: '✨ Portraits' },
 ];
 
-const PREVIEW_COUNT = 6;
+const PREVIEW_COUNT = 9;
 
 export default function Gallery() {
     const [expanded, setExpanded] = useState(false);
@@ -144,22 +144,24 @@ export default function Gallery() {
                 )}
             </div>
 
-            {/* ── "View More" — same style as About section ─── */}
-            {hasMore && (
-                <div className="view-more-wrapper">
-                    <motion.button
-                        className={expanded ? 'btn-ghost' : 'btn-primary'}
-                        onClick={() => setExpanded(v => !v)}
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.96 }}
-                        id="gallery-view-more-btn"
-                    >
-                        {expanded
-                            ? '💨 Show Less'
-                            : `📷 View More (${morePhotos.length} more)`}
-                    </motion.button>
-                </div>
-            )}
+            {/* ── "View More" button — always visible at the bottom, like About & Memories ─── */}
+            <div className="view-more-wrapper">
+                <motion.button
+                    className={expanded ? 'btn-ghost' : 'btn-primary'}
+                    onClick={() => setExpanded(v => !v)}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    id="gallery-view-more-btn"
+                    disabled={filteredPhotos.length === 0}
+                    style={filteredPhotos.length === 0 ? { opacity: 0.4, pointerEvents: 'none' } : {}}
+                >
+                    {expanded
+                        ? '💨 Show Less'
+                        : hasMore
+                            ? `📷 View More (${morePhotos.length} more)`
+                            : '📷 View All Photos'}
+                </motion.button>
+            </div>
 
             {/* ── Lightbox ─── */}
             <AnimatePresence>
