@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -55,8 +55,28 @@ export default function AdminPanel() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
+    // Image upload states
+    const [uploadedImages, setUploadedImages] = useState([]);
+    const [uploading, setUploading] = useState(false);
+    const [uploadPreview, setUploadPreview] = useState(null);
+    const [replaceTarget, setReplaceTarget] = useState(null); // which uploaded image to replace
+    const fileInputRef = useRef(null);
+    const replaceInputRef = useRef(null);
+
     // New future item form
     const [newFuture, setNewFuture] = useState({ type: 'game', title: '', description: '', emoji: '✨' });
+
+    // Load uploads list from content values
+    const parseUploadedImages = (values) => {
+        // Try to find uploaded images referenced in gallery_images
+        try {
+            const galleryJSON = values['gallery_images'] || '[]';
+            const items = JSON.parse(galleryJSON);
+            return items.filter(i => i.src && i.src.startsWith('/api/uploads/'));
+        } catch {
+            return [];
+        }
+    };
 
     // Load content
     const loadContent = useCallback(async () => {
@@ -74,6 +94,7 @@ export default function AdminPanel() {
             });
             setEditValues(values);
             setFutureItems(futureRes.data);
+            setUploadedImages(parseUploadedImages(values));
         } catch {
             setError('Failed to load content. Make sure you are logged in as admin.');
         } finally {
@@ -104,20 +125,55 @@ export default function AdminPanel() {
         }
     };
 
-    // Upload image
-    const handleImageUpload = async (e) => {
-        const file = e.target.files[0];
+    // Upload a new image
+    const handleImageUpload = async (e, isReplace = false) => {
+        const file = e.target.files?.[0];
         if (!file) return;
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (ev) => setUploadPreview(ev.target?.result);
+        reader.readAsDataURL(file);
 
         const formData = new FormData();
         formData.append('image', file);
 
+        setUploading(true);
         try {
             const { data } = await contentApi.upload(formData);
-            setSuccess(`Image uploaded! URL: ${data.url}`);
-            setTimeout(() => setSuccess(''), 5000);
+            const newUrl = data.url;
+
+            if (isReplace && replaceTarget) {
+                // Replace the old URL in gallery_images JSON
+                try {
+                    const galleryStr = editValues['gallery_images'] || '[]';
+                    const galleryArr = JSON.parse(galleryStr);
+                    const updated = galleryArr.map(img =>
+                        img.src === replaceTarget.src ? { ...img, src: newUrl } : img
+                    );
+                    const newGalleryStr = JSON.stringify(updated, null, 2);
+                    setEditValues(prev => ({ ...prev, gallery_images: newGalleryStr }));
+                    // Auto-save gallery_images
+                    await contentApi.update('gallery_images', newGalleryStr);
+                    refresh();
+                    setUploadedImages(parseUploadedImages({ ...editValues, gallery_images: newGalleryStr }));
+                    setSuccess(`✅ Image replaced successfully! New URL: ${newUrl}`);
+                } catch {
+                    setSuccess(`Image uploaded! URL: ${newUrl}`);
+                }
+                setReplaceTarget(null);
+            } else {
+                setSuccess(`Image uploaded! URL: ${newUrl}  —  Copy this into the Gallery Images JSON.`);
+            }
+
+            setTimeout(() => { setSuccess(''); setUploadPreview(null); }, 6000);
         } catch {
-            setError('Failed to upload image.');
+            setError('Failed to upload image. Make sure the server is running.');
+        } finally {
+            setUploading(false);
+            // Reset input so same file can be re-selected
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            if (replaceInputRef.current) replaceInputRef.current.value = '';
         }
     };
 
@@ -362,35 +418,90 @@ export default function AdminPanel() {
                 {/* ── Images Tab ─── */}
                 {activeTab === 'images' && (
                     <div className="admin-section">
-                        <h2 className="admin-section-title">📸 Upload Images</h2>
+                        <h2 className="admin-section-title">📸 Upload & Manage Images</h2>
                         <p className="text-soft" style={{ marginBottom: '1rem' }}>
-                            Upload images to use in gallery, homepage, or other sections. Copy the URL after uploading and paste it into the gallery_images JSON.
+                            Upload new images or replace existing ones. Images are stored on the server and can be referenced in Gallery and other sections.
                         </p>
+
+                        {/* Upload new image */}
                         <div className="admin-upload card-soft">
-                            <label className="admin-upload__label">
-                                <span className="admin-upload__icon">📁</span>
-                                <span>Choose an image (max 5MB)</span>
+                            <h3 className="admin-subsection-title">⬆️ Upload New Image</h3>
+                            <label className="admin-upload__label" htmlFor="admin-image-upload">
+                                <span className="admin-upload__icon">
+                                    {uploading ? '⏳' : uploadPreview ? '✅' : '📁'}
+                                </span>
+                                <span>
+                                    {uploading ? 'Uploading…' : 'Choose an image (max 5MB)'}
+                                </span>
                                 <input
+                                    ref={fileInputRef}
+                                    id="admin-image-upload"
                                     type="file"
                                     accept="image/*"
-                                    onChange={handleImageUpload}
+                                    onChange={(e) => handleImageUpload(e, false)}
                                     className="admin-upload__input"
+                                    disabled={uploading}
                                 />
                             </label>
+                            {uploadPreview && (
+                                <div className="admin-upload__preview">
+                                    <img src={uploadPreview} alt="Preview" style={{ maxHeight: 120, borderRadius: '0.75rem', marginTop: '0.5rem', boxShadow: '0 4px 16px rgba(180,80,120,0.18)' }} />
+                                </div>
+                            )}
                             <p className="text-soft" style={{ marginTop: '0.6rem', fontSize: '0.72rem' }}>
                                 Supported: JPG, PNG, GIF, WebP, SVG
                             </p>
                         </div>
 
+                        {/* Replace existing image */}
+                        <div className="admin-upload card-soft" style={{ marginTop: '1rem' }}>
+                            <h3 className="admin-subsection-title">🔄 Replace an Existing Image</h3>
+                            <p className="text-soft" style={{ fontSize: '0.78rem', marginBottom: '0.8rem' }}>
+                                Select an image from the gallery to replace, then upload a new file. The old file's URL in the gallery JSON will be updated automatically.
+                            </p>
+                            <div className="admin-field">
+                                <label className="admin-field__label" htmlFor="replace-target-url">
+                                    Old Image URL to Replace
+                                </label>
+                                <input
+                                    id="replace-target-url"
+                                    type="text"
+                                    className="admin-field__input"
+                                    placeholder="/api/uploads/your-old-file.jpg"
+                                    value={replaceTarget?.src || ''}
+                                    onChange={e => setReplaceTarget({ src: e.target.value })}
+                                />
+                            </div>
+                            {replaceTarget?.src && (
+                                <label className="admin-upload__label admin-upload__label--replace" htmlFor="admin-image-replace" style={{ marginTop: '0.6rem' }}>
+                                    <span className="admin-upload__icon">{uploading ? '⏳' : '🔄'}</span>
+                                    <span>{uploading ? 'Replacing…' : 'Choose replacement image'}</span>
+                                    <input
+                                        ref={replaceInputRef}
+                                        id="admin-image-replace"
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={(e) => handleImageUpload(e, true)}
+                                        className="admin-upload__input"
+                                        disabled={uploading || !replaceTarget?.src}
+                                    />
+                                </label>
+                            )}
+                        </div>
+
+                        {/* How-to guide */}
                         <div className="admin-upload-help card-soft" style={{ marginTop: '1rem' }}>
                             <h3 className="admin-subsection-title">💡 How to add images to Gallery</h3>
                             <ol className="admin-help-list">
-                                <li>Upload an image above and copy the returned URL</li>
+                                <li>Upload an image above and copy the returned URL from the success message</li>
                                 <li>Go to the <strong>📋 Sections</strong> tab</li>
                                 <li>Find <strong>Gallery Images</strong> field</li>
-                                <li>Add a new object: <code>{`{"src": "/api/uploads/your-file.jpg", "caption": "Your caption 💕"}`}</code></li>
-                                <li>Save and refresh</li>
+                                <li>Add a new object: <code>{`{"src": "/api/uploads/your-file.jpg", "caption": "Your caption 💕", "category": "moments"}`}</code></li>
+                                <li>Save and the gallery updates immediately</li>
                             </ol>
+                            <div style={{ marginTop: '0.8rem', padding: '0.6rem 1rem', background: 'rgba(232,62,108,0.06)', borderRadius: '0.6rem', fontSize: '0.74rem', color: '#9b6b8a' }}>
+                                <strong>Categories:</strong> moments · adventures · dates · portraits
+                            </div>
                         </div>
                     </div>
                 )}

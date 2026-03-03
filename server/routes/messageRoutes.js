@@ -113,14 +113,16 @@ router.get('/unread', (req, res) => {
     }
 });
 
-// ── DELETE /api/messages/:id — Delete own message ──
+// ── DELETE /api/messages/:id — Delete own message (or any message if admin) ──
 router.delete('/:id', (req, res) => {
     try {
         const msg = fileDB.findById('messages', req.params.id);
         if (!msg) {
             return res.status(404).json({ error: 'Message not found.' });
         }
-        if (msg.senderId !== req.user._id) {
+        // Users can only delete their own messages; admins can delete any
+        const isAdmin = req.user.role === 'admin';
+        if (!isAdmin && msg.senderId !== req.user._id) {
             return res.status(403).json({ error: 'You can only delete your own messages.' });
         }
         fileDB.deleteById('messages', req.params.id);

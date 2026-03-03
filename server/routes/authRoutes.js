@@ -112,6 +112,36 @@ router.get('/partner', protect, (req, res) => {
     });
 });
 
+// ── PATCH /api/auth/profile — Update current user's name & avatar ──
+router.patch('/profile', protect, (req, res) => {
+    try {
+        const { name, avatar } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ error: 'Name is required.' });
+        }
+        const trimmedName = name.trim().substring(0, 32);
+        // Allow only a safe set of emojis (simple length-check)
+        const safeAvatar = avatar && avatar.length <= 4 ? avatar : req.user.avatar;
+        const updated = fileDB.updateOne('users', { _id: req.user._id }, {
+            name: trimmedName,
+            avatar: safeAvatar,
+        });
+        if (!updated) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+        res.json({
+            id: updated._id,
+            name: updated.name,
+            email: updated.email,
+            role: updated.role,
+            avatar: updated.avatar,
+        });
+    } catch (err) {
+        console.error('Profile update error:', err);
+        res.status(500).json({ error: 'Failed to update profile.' });
+    }
+});
+
 // ═══════════════════════════════════════════════
 // OTP RECOVERY ROUTES
 // ═══════════════════════════════════════════════

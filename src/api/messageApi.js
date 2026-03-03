@@ -49,6 +49,7 @@ export const authApi = {
     login: (email, password) => api.post('/auth/login', { email, password }),
     getMe: () => api.get('/auth/me'),
     getPartner: () => api.get('/auth/partner'),
+    updateProfile: (data) => api.patch('/auth/profile', data),
 };
 
 // ── Messages API ──────────────────────────────────────────────

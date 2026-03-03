@@ -377,6 +377,22 @@
     display: none;
 }
 
+.admin-upload__preview {
+    display: flex;
+    justify-content: center;
+    margin-top: 0.4rem;
+}
+
+.admin-upload__label--replace {
+    border-color: rgba(168, 85, 247, 0.35);
+    color: #a855f7;
+}
+
+.admin-upload__label--replace:hover {
+    border-color: #a855f7;
+    background: rgba(168, 85, 247, 0.04);
+}
+
 /* ── Help list ─── */
 .admin-help-list {
     padding-left: 1.2rem;

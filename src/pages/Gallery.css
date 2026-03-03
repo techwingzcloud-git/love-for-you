@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════════
-   Gallery — FIXED Alignment
-   Clean, uniform grid · Equal spacing · Responsive
+   Gallery — Flexbox Navbar + Responsive Grid
    ═══════════════════════════════════════════════ */
 
 .gallery {
@@ -22,12 +21,75 @@
     text-align: center;
 }
 
+/* ── Gallery Navbar (Flexbox) ─── */
+.gallery__navbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    padding: 0.8rem 1.2rem 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.gallery__navbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.42rem 1rem;
+    border-radius: 9999px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid rgba(232, 62, 108, 0.22);
+    background: rgba(255, 255, 255, 0.55);
+    color: #9b6b8a;
+    transition: all 0.22s ease;
+    backdrop-filter: blur(6px);
+    white-space: nowrap;
+}
+
+.gallery__navbar-btn:hover {
+    background: rgba(255, 133, 169, 0.15);
+    color: #e83e6c;
+    border-color: rgba(232, 62, 108, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(232, 62, 108, 0.12);
+}
+
+.gallery__navbar-btn--active,
+.gallery__navbar-btn--active:hover {
+    background: linear-gradient(135deg, #ff85a9, #c084fc);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 16px rgba(232, 62, 108, 0.28);
+    transform: translateY(-1px);
+}
+
+/* View More button — matches gallery navbar style */
+.gallery__navbar-btn--viewmore {
+    background: linear-gradient(135deg, #e83e6c, #a855f7);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 16px rgba(232, 62, 108, 0.25);
+    padding: 0.42rem 1.3rem;
+}
+
+.gallery__navbar-btn--viewmore:hover {
+    background: linear-gradient(135deg, #c0294e, #7c3aed);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(232, 62, 108, 0.35);
+}
+
 /* ── FIXED: Uniform grid with equal sizing ─── */
 .gallery__grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
-    padding: 1.5rem 1.2rem 4rem;
+    padding: 1rem 1.2rem 4rem;
     position: relative;
     z-index: 1;
 }
@@ -128,10 +190,20 @@
         padding: 5.5rem 1rem 1.2rem;
     }
 
+    .gallery__navbar {
+        padding: 0.6rem 1rem 0.8rem;
+        gap: 0.4rem;
+    }
+
+    .gallery__navbar-btn {
+        font-size: 0.73rem;
+        padding: 0.36rem 0.85rem;
+    }
+
     .gallery__grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 0.8rem;
-        padding: 1.2rem 1rem 3rem;
+        padding: 0.8rem 1rem 3rem;
     }
 }
 
@@ -140,10 +212,20 @@
         padding: 5rem 0.7rem 0.8rem;
     }
 
+    .gallery__navbar {
+        padding: 0.5rem 0.7rem 0.7rem;
+        gap: 0.35rem;
+    }
+
+    .gallery__navbar-btn {
+        font-size: 0.7rem;
+        padding: 0.32rem 0.75rem;
+    }
+
     .gallery__grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.6rem;
-        padding: 0.8rem 0.6rem 2.5rem;
+        padding: 0.6rem 0.6rem 2.5rem;
     }
 
     .gallery__caption {
@@ -171,9 +253,18 @@
         padding: 4.5rem 0.4rem 0.6rem;
     }
 
+    .gallery__navbar {
+        gap: 0.28rem;
+    }
+
+    .gallery__navbar-btn {
+        font-size: 0.66rem;
+        padding: 0.28rem 0.6rem;
+    }
+
     .gallery__grid {
         grid-template-columns: repeat(2, 1fr);
-        padding: 0.6rem 0.4rem 2rem;
+        padding: 0.5rem 0.4rem 2rem;
         gap: 0.5rem;
     }
 }

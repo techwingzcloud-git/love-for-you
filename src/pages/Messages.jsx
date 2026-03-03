@@ -13,8 +13,11 @@ const isProduction = typeof window !== 'undefined' &&
 // Polling interval for production (Vercel doesn't support WebSockets)
 const POLL_INTERVAL = isProduction ? 3000 : null;
 
+// Available avatar emojis for profile customisation
+const AVATAR_OPTIONS = ['💕', '🥰', '😍', '💖', '💗', '💓', '💞', '💝', '😘', '🌹', '🌸', '💌', '✨', '🦋', '🌙', '⭐', '🎀', '🫶', '💫', '🌷'];
+
 export default function Messages() {
-    const { user } = useAuth();
+    const { user, setUser } = useAuth();
     const navigate = useNavigate();
     const [messages, setMessages] = useState([]);
     const [inputVal, setInputVal] = useState('');
@@ -24,10 +27,26 @@ export default function Messages() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [sending, setSending] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
+
+    // Profile edit modal state
+    const [profileOpen, setProfileOpen] = useState(false);
+    const [editName, setEditName] = useState('');
+    const [editAvatar, setEditAvatar] = useState('');
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [profileMsg, setProfileMsg] = useState('');
+
     const endRef = useRef(null);
     const inputRef = useRef(null);
     const socketRef = useRef(null);
     const typingTimeout = useRef(null);
+
+    // Normalize ID to string for safe comparison (handles ObjectId / string)
+    const normalizeId = (id) => {
+        if (!id) return '';
+        if (typeof id === 'object' && id._id) return String(id._id);
+        return String(id);
+    };
 
     // Scroll to bottom
     const scrollToBottom = useCallback(() => {
@@ -103,6 +122,10 @@ export default function Messages() {
                     ));
                 });
 
+                socket.on('message:deleted', ({ messageId }) => {
+                    setMessages(prev => prev.filter(m => m._id !== messageId));
+                });
+
                 socket.on('typing:show', () => setIsTyping(true));
                 socket.on('typing:hide', () => setIsTyping(false));
 
@@ -153,6 +176,15 @@ export default function Messages() {
         scrollToBottom();
     }, [messages, scrollToBottom]);
 
+    // Open profile modal — init with current values
+    useEffect(() => {
+        if (profileOpen) {
+            setEditName(user?.name || '');
+            setEditAvatar(user?.avatar || '💕');
+            setProfileMsg('');
+        }
+    }, [profileOpen, user]);
+
     // ── Send via HTTP API (always works) + Socket.IO bonus ──
     const sendMessage = async () => {
         const text = inputVal.trim();
@@ -181,6 +213,59 @@ export default function Messages() {
             setError('Failed to send message.');
         } finally {
             setSending(false);
+        }
+    };
+
+    // ── Delete a message (own messages for all; any message for admin) ──
+    const deleteMessage = async (msgId, senderId) => {
+        const myId = normalizeId(user?.id);
+        const senderNorm = normalizeId(senderId);
+        const canDelete = senderNorm === myId || user?.role === 'admin';
+        if (!canDelete) return;
+
+        setDeletingId(msgId);
+        try {
+            await messagesApi.delete(msgId);
+            setMessages(prev => prev.filter(m => m._id !== msgId));
+            // Notify partner via socket
+            if (socketRef.current?.connected) {
+                socketRef.current.emit('message:delete', { messageId: msgId });
+            }
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to delete message.');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    // ── Clear all messages (admin only, frontend-only view) ──
+    const clearAllMessages = () => {
+        if (!window.confirm('Clear all displayed messages? This will delete them from the server.')) return;
+        // Delete each message one by one (admin can delete any)
+        const ids = messages.map(m => m._id);
+        ids.forEach(async (id) => {
+            try { await messagesApi.delete(id); } catch { /* ignore */ }
+        });
+        setMessages([]);
+    };
+
+    // ── Update profile (name + avatar) ──
+    const saveProfile = async () => {
+        if (!editName.trim()) { setProfileMsg('Name cannot be empty.'); return; }
+        setProfileSaving(true);
+        setProfileMsg('');
+        try {
+            const { data } = await authApi.updateProfile({ name: editName.trim(), avatar: editAvatar });
+            // Update local user state + storage
+            const updatedUser = { ...user, name: data.name, avatar: data.avatar };
+            localStorage.setItem('lfyUser', JSON.stringify(updatedUser));
+            if (typeof setUser === 'function') setUser(updatedUser);
+            setProfileMsg('✅ Profile updated!');
+            setTimeout(() => { setProfileOpen(false); setProfileMsg(''); }, 1200);
+        } catch (err) {
+            setProfileMsg(err.response?.data?.error || 'Failed to update profile.');
+        } finally {
+            setProfileSaving(false);
         }
     };
 
@@ -237,7 +322,7 @@ export default function Messages() {
     return (
         <div className="messages-page page-wrapper bg-pink-dream">
             <div className="dm-container">
-                {/* ── Header ─── */}
+                {/* ── Header ── */}
                 <div className="dm-header card-soft">
                     <button className="dm-back" onClick={() => navigate('/')} aria-label="Go back">
                         ← Back
@@ -260,7 +345,30 @@ export default function Messages() {
                             </div>
                         </div>
                     </div>
-                    <div className="dm-header-hearts animate-pulse-heart">💕</div>
+
+                    {/* Right side: current user info + edit profile + admin clear */}
+                    <div className="dm-header-actions">
+                        {user?.role === 'admin' && messages.length > 0 && (
+                            <button
+                                className="dm-clear-btn"
+                                onClick={clearAllMessages}
+                                title="Clear all messages (Admin)"
+                                id="dm-clear-all-btn"
+                            >
+                                🗑️
+                            </button>
+                        )}
+                        <button
+                            className="dm-header-you dm-profile-btn"
+                            onClick={() => setProfileOpen(true)}
+                            title="Edit your profile"
+                            id="dm-edit-profile-btn"
+                        >
+                            <span className="dm-my-avatar">{user?.avatar || '💕'}</span>
+                            <span className="dm-my-name">{user?.name}</span>
+                            <span className="dm-edit-icon">✏️</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* ── Error banner ─── */}
@@ -287,25 +395,43 @@ export default function Messages() {
                             </div>
                             <AnimatePresence initial={false}>
                                 {msgs.map(msg => {
-                                    const isMe = msg.senderId?._id === user?.id || msg.senderId === user?.id;
+                                    const senderId = normalizeId(msg.senderId);
+                                    const myId = normalizeId(user?.id);
+                                    const isMe = senderId === myId;
+                                    const canDelete = isMe || user?.role === 'admin';
+
                                     return (
                                         <motion.div
                                             key={msg._id}
-                                            className={`dm-bubble-wrap ${isMe ? 'dm-bubble-wrap--me' : ''}`}
+                                            className={`dm-bubble-wrap ${isMe ? 'dm-bubble-wrap--me' : 'dm-bubble-wrap--them'}`}
                                             initial={{ opacity: 0, y: 12, scale: 0.92 }}
                                             animate={{ opacity: 1, y: 0, scale: 1 }}
+                                            exit={{ opacity: 0, scale: 0.85, y: -6 }}
                                             transition={{ type: 'spring', stiffness: 180, damping: 22 }}
                                         >
+                                            {/* Avatar only on receiver (left) side */}
                                             {!isMe && (
-                                                <div className="dm-avatar-small">
+                                                <div className="dm-avatar-small" title={partner?.name}>
                                                     {partner?.avatar || '💕'}
                                                 </div>
                                             )}
-                                            <div>
+                                            <div className="dm-bubble-content">
                                                 <div className={`dm-bubble ${isMe ? 'dm-bubble--me' : 'dm-bubble--them'}`}>
                                                     {msg.message}
+                                                    {/* Delete button — appears on hover */}
+                                                    {canDelete && (
+                                                        <button
+                                                            className={`dm-delete-btn ${isMe ? 'dm-delete-btn--me' : 'dm-delete-btn--them'}`}
+                                                            onClick={() => deleteMessage(msg._id, msg.senderId)}
+                                                            disabled={deletingId === msg._id}
+                                                            title="Delete message"
+                                                            aria-label="Delete this message"
+                                                        >
+                                                            {deletingId === msg._id ? '⏳' : '🗑️'}
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                <div className={`dm-time ${isMe ? 'dm-time--me' : ''}`}>
+                                                <div className={`dm-time ${isMe ? 'dm-time--me' : 'dm-time--them'}`}>
                                                     {formatTime(msg.createdAt)}
                                                     {isMe && (
                                                         <span className="dm-read-status">
@@ -314,6 +440,12 @@ export default function Messages() {
                                                     )}
                                                 </div>
                                             </div>
+                                            {/* Avatar on sender (right) side */}
+                                            {isMe && (
+                                                <div className="dm-avatar-small dm-avatar-small--me" title={user?.name}>
+                                                    {user?.avatar || '💕'}
+                                                </div>
+                                            )}
                                         </motion.div>
                                     );
                                 })}
@@ -363,6 +495,100 @@ export default function Messages() {
                     </motion.button>
                 </div>
             </div>
+
+            {/* ── Profile Edit Modal ─── */}
+            <AnimatePresence>
+                {profileOpen && (
+                    <motion.div
+                        className="profile-modal-overlay"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setProfileOpen(false)}
+                    >
+                        <motion.div
+                            className="profile-modal card-soft"
+                            initial={{ scale: 0.88, y: 30, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.88, y: 30, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 200, damping: 24 }}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="profile-modal__header">
+                                <h2 className="profile-modal__title">✏️ Edit Profile</h2>
+                                <button
+                                    className="profile-modal__close"
+                                    onClick={() => setProfileOpen(false)}
+                                    aria-label="Close profile editor"
+                                >✕</button>
+                            </div>
+
+                            {/* Current avatar preview */}
+                            <div className="profile-modal__avatar-preview">
+                                <span>{editAvatar}</span>
+                            </div>
+
+                            {/* Name field */}
+                            <div className="profile-modal__field">
+                                <label className="profile-modal__label" htmlFor="edit-name">Display Name</label>
+                                <input
+                                    id="edit-name"
+                                    type="text"
+                                    className="dm-input"
+                                    value={editName}
+                                    onChange={e => setEditName(e.target.value)}
+                                    placeholder="Your name…"
+                                    maxLength={32}
+                                />
+                            </div>
+
+                            {/* Avatar picker */}
+                            <div className="profile-modal__field">
+                                <label className="profile-modal__label">Choose Avatar</label>
+                                <div className="profile-modal__avatars">
+                                    {AVATAR_OPTIONS.map(av => (
+                                        <button
+                                            key={av}
+                                            className={`profile-modal__avatar-opt ${editAvatar === av ? 'profile-modal__avatar-opt--active' : ''}`}
+                                            onClick={() => setEditAvatar(av)}
+                                            aria-label={`Avatar ${av}`}
+                                        >
+                                            {av}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Feedback */}
+                            {profileMsg && (
+                                <p className={`profile-modal__msg ${profileMsg.startsWith('✅') ? 'profile-modal__msg--ok' : 'profile-modal__msg--err'}`}>
+                                    {profileMsg}
+                                </p>
+                            )}
+
+                            {/* Actions */}
+                            <div className="profile-modal__actions">
+                                <button
+                                    className="btn-ghost"
+                                    onClick={() => setProfileOpen(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <motion.button
+                                    className="btn-primary"
+                                    onClick={saveProfile}
+                                    disabled={profileSaving}
+                                    whileHover={{ scale: 1.04 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    id="dm-save-profile-btn"
+                                >
+                                    {profileSaving ? '⏳ Saving…' : '💾 Save Changes'}
+                                </motion.button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
