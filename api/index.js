@@ -345,13 +345,105 @@ app.post('/api/auth/login', async (req, res) => {
         const isMatch = await user.comparePassword(password);
         if (!isMatch) return res.status(401).json({ error: 'Invalid email or password.' });
 
+        // Password OK — require OTP before issuing token
+        const mobileNumber = user.mobileNumber || process.env.OTP_MOBILE || '9790558017';
+        const masked = '****' + mobileNumber.slice(-4);
+        res.json({
+            requiresOtp: true,
+            userId: user._id,
+            maskedMobile: masked,
+        });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ error: 'Login failed. Please try again.' });
+    }
+});
+
+// ── POST /api/auth/send-login-otp — Send OTP after password verified ──
+app.post('/api/auth/send-login-otp', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) return res.status(400).json({ error: 'userId required.' });
+
+        const user = await User.findById(userId).select('+otpCode +otpExpiry +otpAttempts +otpLastRequest');
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+
+        const mobileNumber = user.mobileNumber || process.env.OTP_MOBILE || '9790558017';
+        const cleanMobile = mobileNumber.replace(/[^0-9]/g, '');
+
+        // Rate limit: 1 OTP per 60 seconds
+        if (!checkOTPRateLimit('login_' + userId)) {
+            return res.status(429).json({ error: 'Please wait 60 seconds before requesting another OTP.' });
+        }
+
+        const otp = generateOTP();
+        const hashedOtp = await hashOTP(otp);
+
+        user.otpCode = hashedOtp;
+        user.otpExpiry = new Date(Date.now() + 3 * 60 * 1000); // 3 minutes
+        user.otpAttempts = 0;
+        user.otpVerified = false;
+        user.otpLastRequest = new Date();
+        await user.save();
+
+        const result = await sendOTPviaSMS(cleanMobile, otp);
+        if (!result.success) {
+            return res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
+        }
+
+        res.json({
+            success: true,
+            message: `OTP sent to ****${cleanMobile.slice(-4)}`,
+            method: result.method,
+        });
+    } catch (err) {
+        console.error('Send login OTP error:', err);
+        res.status(500).json({ error: 'Failed to send OTP.' });
+    }
+});
+
+// ── POST /api/auth/verify-login-otp — Verify OTP and issue JWT ──
+app.post('/api/auth/verify-login-otp', async (req, res) => {
+    try {
+        const { userId, otp } = req.body;
+        if (!userId || !otp) return res.status(400).json({ error: 'userId and OTP are required.' });
+
+        const user = await User.findById(userId).select('+otpCode +otpExpiry +otpAttempts');
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+
+        // Check expiry
+        if (!user.otpExpiry || new Date() > user.otpExpiry) {
+            user.otpCode = ''; user.otpExpiry = null; user.otpAttempts = 0;
+            await user.save();
+            return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+        }
+
+        // Check max attempts
+        if (user.otpAttempts >= 3) {
+            user.otpCode = ''; user.otpExpiry = null; user.otpAttempts = 0;
+            await user.save();
+            return res.status(400).json({ error: 'Too many failed attempts. Please request a new OTP.' });
+        }
+
+        const isValid = await verifyOTP(otp.toString(), user.otpCode);
+        if (!isValid) {
+            user.otpAttempts += 1;
+            await user.save();
+            const remaining = 3 - user.otpAttempts;
+            return res.status(400).json({ error: `Invalid OTP. ${remaining} attempt(s) remaining.` });
+        }
+
+        // OTP verified — clear it and issue token
+        user.otpCode = ''; user.otpExpiry = null; user.otpAttempts = 0; user.otpVerified = false;
+        await user.save();
+
         res.json({
             token: generateToken(user._id),
             user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
         });
     } catch (err) {
-        console.error('Login error:', err);
-        res.status(500).json({ error: 'Login failed. Please try again.' });
+        console.error('Verify login OTP error:', err);
+        res.status(500).json({ error: 'OTP verification failed.' });
     }
 });
 

@@ -33,17 +33,27 @@ export function AuthProvider({ children }) {
         setError('');
         try {
             const { data } = await authApi.login(email, password);
-            const { token, user: userData } = data;
-
-            localStorage.setItem('lfyToken', token);
-            localStorage.setItem('lfyUser', JSON.stringify(userData));
-            setUser(userData);
-            return userData;
+            // Step 1: password OK — server requires OTP before issuing token
+            if (data.requiresOtp) {
+                return { requiresOtp: true, userId: data.userId, maskedMobile: data.maskedMobile };
+            }
+            // Fallback: direct login (should not happen with new flow)
+            localStorage.setItem('lfyToken', data.token);
+            localStorage.setItem('lfyUser', JSON.stringify(data.user));
+            setUser(data.user);
+            return data.user;
         } catch (err) {
             const msg = err.response?.data?.error || 'Login failed. Please try again.';
             setError(msg);
             throw err;
         }
+    }, []);
+
+    // Called after OTP is verified — stores token and sets user
+    const finalizeLogin = useCallback((token, userData) => {
+        localStorage.setItem('lfyToken', token);
+        localStorage.setItem('lfyUser', JSON.stringify(userData));
+        setUser(userData);
     }, []);
 
     const logout = useCallback(() => {
@@ -64,6 +74,7 @@ export function AuthProvider({ children }) {
             error,
             setError,
             login,
+            finalizeLogin,
             logout,
             isAuthenticated,
             isAdmin,

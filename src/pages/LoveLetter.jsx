@@ -44,7 +44,8 @@ export default function LoveLetter() {
     useEffect(() => {
         if (!started) return;
         if (visibleLines >= activeLines.length) return;
-        const delay = activeLines[visibleLines] === '' ? 350 : 820;
+        // Fast: 120ms per text line, 60ms for blank spacer lines
+        const delay = activeLines[visibleLines] === '' ? 60 : 120;
         const t = setTimeout(() => setVisibleLines(v => v + 1), delay);
         return () => clearTimeout(t);
     }, [started, visibleLines, activeLines]);
