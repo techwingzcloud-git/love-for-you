@@ -14,7 +14,7 @@ const DEFAULT_BLOCKS = [
 const DEFAULT_MILESTONES = [
     { icon: '👀', date: 'Day One', text: 'The moment our eyes met — the world slowed down.' },
     { icon: '💬', date: 'First Texts', text: 'Messages that started casual and turned into something magical.' },
-    { icon: '☕', date: 'First Date', text: 'Coffee, butterflies, and smiles that wouldn\'t stop.' },
+    { icon: '☕', date: 'First Meet', text: 'A Sodabottle and waterbottle that smiles wouldn\'t stop.' },
     { icon: '🤝', date: 'Together', text: 'We decided to be each other\'s person — forever.' },
     { icon: '🌟', date: 'Every Day', text: 'And every single day since then has been a blessing.' },
 ];
