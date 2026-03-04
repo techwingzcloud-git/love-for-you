@@ -51,8 +51,8 @@ export default function Surprise({ scrollTo }) {
     const letterLines = getJSON('letter_content', DEFAULT_LETTER);
 
     useEffect(() => {
-        const t1 = setTimeout(() => setShowMsg(true), 500);
-        const t2 = setTimeout(() => setHeartBurst(true), 1000);
+        const t1 = setTimeout(() => setShowMsg(true), 900);
+        const t2 = setTimeout(() => setHeartBurst(true), 1400);
         return () => { clearTimeout(t1); clearTimeout(t2); };
     }, []);
 
@@ -60,7 +60,7 @@ export default function Surprise({ scrollTo }) {
     useEffect(() => {
         if (!letterStarted) return;
         if (visibleLines >= letterLines.length) return;
-        const delay = letterLines[visibleLines] === '' ? 350 : 750;
+        const delay = letterLines[visibleLines] === '' ? 120 : 250;
         const t = setTimeout(() => setVisibleLines(v => v + 1), delay);
         return () => clearTimeout(t);
     }, [letterStarted, visibleLines, letterLines]);
