@@ -35,7 +35,7 @@ export function AuthProvider({ children }) {
             const { data } = await authApi.login(email, password);
             // Step 1: password OK — server requires OTP before issuing token
             if (data.requiresOtp) {
-                return { requiresOtp: true, userId: data.userId, maskedMobile: data.maskedMobile };
+                return { requiresOtp: true, userId: data.userId, maskedEmail: data.maskedEmail };
             }
             // Fallback: direct login (should not happen with new flow)
             localStorage.setItem('lfyToken', data.token);

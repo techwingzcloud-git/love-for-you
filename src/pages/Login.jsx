@@ -19,7 +19,7 @@ export default function Login() {
     // ── Login OTP state ──
     const [loginStep, setLoginStep] = useState('creds'); // 'creds' | 'otp'
     const [pendingUserId, setPendingUserId] = useState(null);
-    const [maskedMobile, setMaskedMobile] = useState('');
+    const [maskedEmail, setMaskedEmail] = useState('');
     const [loginOtp, setLoginOtp] = useState('');
     const [otpSending, setOtpSending] = useState(false);
     const [loginOtpError, setLoginOtpError] = useState('');
@@ -83,7 +83,7 @@ export default function Login() {
                 // Role check before proceeding to OTP
                 // We don't know role yet — check after OTP. Just store pending info.
                 setPendingUserId(result.userId);
-                setMaskedMobile(result.maskedMobile);
+                setMaskedEmail(result.maskedEmail);
                 setPendingRole(loginMode);
 
                 // Auto-send the OTP
@@ -337,7 +337,7 @@ export default function Login() {
                                     <motion.div className="login__otp-icon" animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 2, repeat: Infinity }}>🔐</motion.div>
 
                                     <p className="text-soft login__otp-hint">
-                                        A 6-digit code was sent to <strong>{maskedMobile}</strong>
+                                        A 6-digit code was sent to your email <strong>{maskedEmail}</strong>
                                     </p>
 
                                     {/* Countdown timer */}

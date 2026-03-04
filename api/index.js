@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 
 const app = express();
 
@@ -115,46 +116,72 @@ async function verifyOTP(plainOtp, hashedOtp) {
     return bcrypt.compare(plainOtp, hashedOtp);
 }
 
-// Send OTP via Twilio SMS (or console fallback)
-async function sendOTPviaSMS(mobileNumber, otp) {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+// ── Send OTP via Email (Nodemailer + Gmail SMTP) ──
+async function sendOTPviaEmail(toEmail, otp) {
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailPass = process.env.GMAIL_APP_PASSWORD;
 
-    if (!accountSid || !authToken || !fromNumber) {
-        // Fallback: log OTP to console (for development/testing)
-        console.log(`📱 OTP for ${mobileNumber}: ${otp}`);
-        console.log('⚠️  Twilio not configured — OTP logged to console');
+    // Development/unconfigured fallback — OTP appears in Vercel Function Logs
+    if (!gmailUser || !gmailPass) {
+        console.log(`\n════════════════════════════════`);
+        console.log(`🔑 LOGIN OTP for ${toEmail}: ${otp}`);
+        console.log(`⚠️  GMAIL not configured — set GMAIL_USER + GMAIL_APP_PASSWORD in Vercel env`);
+        console.log(`════════════════════════════════\n`);
         return { success: true, method: 'console' };
     }
 
     try {
-        const formattedNumber = mobileNumber.startsWith('+') ? mobileNumber : `+91${mobileNumber}`;
-        const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-        const body = new URLSearchParams({
-            To: formattedNumber,
-            From: fromNumber,
-            Body: `💕 Love For You — Your OTP is: ${otp}. Valid for 5 minutes. Do not share.`,
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: { user: gmailUser, pass: gmailPass },
         });
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64'),
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: body.toString(),
+        const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#fff0f5;font-family:'Poppins',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff0f5;padding:30px 0;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:20px;box-shadow:0 4px 30px rgba(232,62,108,0.12);overflow:hidden;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#ff85a9,#a855f7);padding:30px;text-align:center;">
+            <h1 style="color:#fff;font-size:26px;margin:0;letter-spacing:1px;">Love For You ❤️</h1>
+            <p style="color:rgba(255,255,255,0.85);font-size:13px;margin:6px 0 0;">Your one-time login code</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:36px 40px;text-align:center;">
+            <p style="color:#6b3a5a;font-size:15px;margin:0 0 20px;">Use this code to complete your login. It expires in <strong>3 minutes</strong>.</p>
+            <div style="display:inline-block;background:linear-gradient(135deg,#fff0f5,#f0e6ff);border:2px dashed #ffb3cc;border-radius:16px;padding:22px 48px;margin:10px 0;">
+              <span style="font-size:42px;font-weight:800;letter-spacing:12px;color:#e83e6c;font-family:'Courier New',monospace;">${otp}</span>
+            </div>
+            <p style="color:#9b6b8a;font-size:13px;margin:20px 0 0;line-height:1.6;">Never share this OTP with anyone.<br>Max <strong>3 attempts</strong> before it is invalidated.</p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#ffdce8;padding:16px 40px;text-align:center;">
+            <p style="color:#c0294e;font-size:11px;margin:0;">🔒 This is a private space. If you didn’t request this, ignore this email.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+        await transporter.sendMail({
+            from: `"Love For You 💕" <${gmailUser}>`,
+            to: toEmail,
+            subject: '🔐 Your Login OTP — Love For You',
+            html,
+            text: `Your Love For You login OTP is: ${otp}\nExpires in 3 minutes. Do NOT share this code.`,
         });
 
-        if (!response.ok) {
-            const errData = await response.json();
-            console.error('Twilio error:', errData);
-            return { success: false, error: 'SMS delivery failed' };
-        }
-        return { success: true, method: 'sms' };
+        return { success: true, method: 'email' };
     } catch (err) {
-        console.error('SMS sending error:', err.message);
-        return { success: false, error: err.message };
+        console.error('Email OTP error:', err.message);
+        return { success: false, error: 'Email delivery failed: ' + err.message };
     }
 }
 
@@ -345,13 +372,18 @@ app.post('/api/auth/login', async (req, res) => {
         const isMatch = await user.comparePassword(password);
         if (!isMatch) return res.status(401).json({ error: 'Invalid email or password.' });
 
-        // Password OK — require OTP before issuing token
-        const mobileNumber = user.mobileNumber || process.env.OTP_MOBILE || '9790558017';
-        const masked = '****' + mobileNumber.slice(-4);
+        // Password OK — require email OTP before issuing token
+        // Mask the email: m***@gmail.com
+        const userEmail = user.email || '';
+        const [localPart, domain] = userEmail.split('@');
+        const maskedEmail = localPart.length > 2
+            ? localPart[0] + '***@' + domain
+            : '***@' + (domain || 'email.com');
+
         res.json({
             requiresOtp: true,
             userId: user._id,
-            maskedMobile: masked,
+            maskedEmail,
         });
     } catch (err) {
         console.error('Login error:', err);
@@ -368,10 +400,11 @@ app.post('/api/auth/send-login-otp', async (req, res) => {
         const user = await User.findById(userId).select('+otpCode +otpExpiry +otpAttempts +otpLastRequest');
         if (!user) return res.status(404).json({ error: 'User not found.' });
 
-        const mobileNumber = user.mobileNumber || process.env.OTP_MOBILE || '9790558017';
-        const cleanMobile = mobileNumber.replace(/[^0-9]/g, '');
+        // OTP destination: user’s registered email
+        // Override allowed via OTP_EMAIL env var (e.g. admin notification inbox)
+        const otpDestEmail = process.env.OTP_EMAIL || user.email;
 
-        // Rate limit: 1 OTP per 60 seconds
+        // Rate limit: 1 OTP per 60 seconds per user
         if (!checkOTPRateLimit('login_' + userId)) {
             return res.status(429).json({ error: 'Please wait 60 seconds before requesting another OTP.' });
         }
@@ -386,14 +419,23 @@ app.post('/api/auth/send-login-otp', async (req, res) => {
         user.otpLastRequest = new Date();
         await user.save();
 
-        const result = await sendOTPviaSMS(cleanMobile, otp);
+        const result = await sendOTPviaEmail(otpDestEmail, otp);
         if (!result.success) {
-            return res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
+            return res.status(500).json({
+                error: 'Failed to send OTP email. Please try again.',
+                detail: result.error,
+            });
         }
+
+        // Mask email for UI: m***@gmail.com
+        const [localPart, domain] = otpDestEmail.split('@');
+        const maskedEmail = localPart.length > 2
+            ? localPart[0] + '***@' + domain
+            : '***@' + (domain || 'email.com');
 
         res.json({
             success: true,
-            message: `OTP sent to ****${cleanMobile.slice(-4)}`,
+            message: `OTP sent to ${maskedEmail}`,
             method: result.method,
         });
     } catch (err) {

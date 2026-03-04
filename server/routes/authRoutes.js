@@ -45,7 +45,7 @@ const protect = async (req, res, next) => {
     }
 };
 
-// ── POST /api/auth/login — Login ──
+// ── POST /api/auth/login — Step 1: Verify password, return OTP prompt ──
 router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -65,17 +65,17 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password.' });
         }
 
-        const token = generateToken(user._id);
+        // Mask mobile: show last 4 digits only
+        const mobile = user.mobileNumber || '';
+        const maskedMobile = mobile.length >= 4
+            ? `****${mobile.slice(-4)}`
+            : '****';
 
-        res.json({
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                avatar: user.avatar,
-            },
+        // Return OTP challenge — do NOT issue token yet
+        return res.json({
+            requiresOtp: true,
+            userId: user._id,
+            maskedMobile,
         });
     } catch (error) {
         console.error('Login error:', error);
@@ -143,12 +143,122 @@ router.patch('/profile', protect, (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
-// OTP RECOVERY ROUTES
+// LOGIN OTP ROUTES (Two-Factor Login)
 // ═══════════════════════════════════════════════
 
 import crypto from 'crypto';
 
+// In-memory OTP store: Map<userId, { hashedOtp, expiry, attempts }>
+const loginOtpStore = new Map();
 // In-memory rate limit (resets on server restart)
+const loginOtpRateLimit = new Map();
+
+// POST /api/auth/send-login-otp
+// Sends a fresh 6-digit OTP to the user's registered mobile
+router.post('/send-login-otp', async (req, res) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) return res.status(400).json({ error: 'userId is required.' });
+
+        const user = fileDB.findById('users', userId);
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+
+        // Rate limit: max 1 send per 60 s per user
+        const now = Date.now();
+        const lastSent = loginOtpRateLimit.get(userId);
+        if (lastSent && now - lastSent < 60000) {
+            const wait = Math.ceil((60000 - (now - lastSent)) / 1000);
+            return res.status(429).json({ error: `Please wait ${wait}s before requesting another OTP.` });
+        }
+        loginOtpRateLimit.set(userId, now);
+
+        const otp = crypto.randomInt(100000, 999999).toString();
+        const hashedOtp = await bcrypt.hash(otp, 10);
+
+        // Store in memory (expires in 3 minutes)
+        loginOtpStore.set(userId, {
+            hashedOtp,
+            expiry: Date.now() + 3 * 60 * 1000,
+            attempts: 0,
+        });
+
+        const result = await sendOTPviaSMS(user.mobileNumber || '', otp);
+        if (!result.success) return res.status(500).json({ error: 'Failed to send OTP.' });
+
+        const mobile = user.mobileNumber || '';
+        const maskedMobile = mobile.length >= 4 ? `****${mobile.slice(-4)}` : '****';
+
+        return res.json({
+            success: true,
+            message: `OTP sent to ${maskedMobile}`,
+            method: result.method,
+        });
+    } catch (err) {
+        console.error('send-login-otp error:', err);
+        res.status(500).json({ error: 'Failed to send OTP.' });
+    }
+});
+
+// POST /api/auth/verify-login-otp
+// Verifies the OTP and, if correct, issues a JWT
+router.post('/verify-login-otp', async (req, res) => {
+    try {
+        const { userId, otp } = req.body;
+        if (!userId || !otp) return res.status(400).json({ error: 'userId and otp are required.' });
+
+        const user = fileDB.findById('users', userId);
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+
+        const record = loginOtpStore.get(userId);
+        if (!record) return res.status(400).json({ error: 'No OTP found. Please request a new one.' });
+
+        // Check expiry
+        if (Date.now() > record.expiry) {
+            loginOtpStore.delete(userId);
+            return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
+        }
+
+        // Check max attempts (3)
+        if (record.attempts >= 3) {
+            loginOtpStore.delete(userId);
+            return res.status(400).json({ error: 'Maximum attempts exceeded. Request a new OTP.' });
+        }
+
+        const isValid = await bcrypt.compare(otp.toString(), record.hashedOtp);
+        if (!isValid) {
+            record.attempts += 1;
+            loginOtpStore.set(userId, record);
+            const remaining = 3 - record.attempts;
+            return res.status(400).json({ error: `Invalid OTP. ${remaining} attempt(s) remaining.` });
+        }
+
+        // OTP correct — clean up and issue token
+        loginOtpStore.delete(userId);
+        loginOtpRateLimit.delete(userId);
+
+        const token = generateToken(user._id);
+        return res.json({
+            success: true,
+            token,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                avatar: user.avatar,
+            },
+        });
+    } catch (err) {
+        console.error('verify-login-otp error:', err);
+        res.status(500).json({ error: 'OTP verification failed.' });
+    }
+});
+
+// ═══════════════════════════════════════════════
+// OTP RECOVERY ROUTES
+// ═══════════════════════════════════════════════
+
+// In-memory rate limit for password/email recovery
 const otpRateLimit = new Map();
 
 // Helper: send OTP via Twilio or console
