@@ -70,12 +70,18 @@
 
 /* ── FIXED: Uniform grid with equal sizing ─── */
 .gallery__grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    /* display: grid;
+    grid-template-columns: repeat(3, 1fr); 
     gap: 1rem;
-    padding: 1rem 1.2rem 1.5rem;
+    padding: 1rem 1.2rem 1.5rem;*/
     position: relative;
     z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    padding: 1rem 1.2rem 1.5rem;
+    max-width: 800px;
+    margin: 0 auto;
 }
 
 .gallery__item {
