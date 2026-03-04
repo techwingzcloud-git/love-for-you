@@ -51,8 +51,8 @@ export default function Surprise({ scrollTo }) {
     const letterLines = getJSON('letter_content', DEFAULT_LETTER);
 
     useEffect(() => {
-        const t1 = setTimeout(() => setShowMsg(true), 900);
-        const t2 = setTimeout(() => setHeartBurst(true), 1600);
+        const t1 = setTimeout(() => setShowMsg(true), 500);
+        const t2 = setTimeout(() => setHeartBurst(true), 1000);
         return () => { clearTimeout(t1); clearTimeout(t2); };
     }, []);
 
