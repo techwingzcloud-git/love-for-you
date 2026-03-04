@@ -5,10 +5,10 @@ import './Memories.css';
 
 const DEFAULT_MEMORIES = [
     { date: 'The First Hello', emoji: '👋', color: '#ffdce8', border: '#ff85a9', title: 'It Started With a Smile', desc: 'A nervous smile, a bold hello — and suddenly the world felt different.' },
-    { date: 'First Coffee Date', emoji: '☕', color: '#f0e6ff', border: '#c084fc', title: 'Two Hours That Felt Like Minutes', desc: 'We talked about everything and nothing. The coffee went cold.' },
-    { date: 'First Movie Night', emoji: '🍿', color: '#fff0f5', border: '#ff85a9', title: 'We Barely Watched the Movie', desc: 'Blanket forts, terrible popcorn, and so much laughter.' },
+    { date: 'First Meet', emoji: '☕', color: '#f0e6ff', border: '#c084fc', title: 'Two Hours That Felt Like Minutes', desc: 'We Took a picture and drunk a soda and talked about everything and nothing.' },
+    // { date: 'First Movie Night', emoji: '🍿', color: '#fff0f5', border: '#ff85a9', title: 'We Barely Watched the Movie', desc: 'Blanket forts, terrible popcorn, and so much laughter.' },
     { date: 'First "I Love You"', emoji: '❤️', color: '#ffdce8', border: '#e83e6c', title: 'Three Words, Infinite Weight', desc: 'It slipped out quietly, somewhere between a laugh and a breath.' },
-    { date: 'Our First Trip', emoji: '✈️', color: '#f0e6ff', border: '#a855f7', title: 'Adventures With You Are Home', desc: 'New city, new memories, same goofy us.' },
+    { date: 'Our First Travel', emoji: '✈️', color: '#f0e6ff', border: '#a855f7', title: 'Adventures With You Are near', desc: 'The bus is crowded and people are standing around us. My girl is sitting next to me, and I’m holding her bag' },
     { date: 'Today & Always', emoji: '🌟', color: '#fff0f5', border: '#ffb3cc', title: 'Every Day With You', desc: 'The story is still being written. Here\'s to forever. 💕' },
 ];
 
