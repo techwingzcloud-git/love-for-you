@@ -92,7 +92,7 @@
     box-shadow: 0 3px 16px rgba(180, 80, 120, 0.08);
     transition: box-shadow 0.3s, transform 0.3s;
     /* FIXED: uniform aspect ratio for all images */
-    aspect-ratio: 1 / 1;
+    /* aspect-ratio: 1 / 1; */
 }
 
 .gallery__item:hover {
