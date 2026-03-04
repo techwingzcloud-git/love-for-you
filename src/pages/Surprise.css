@@ -156,7 +156,7 @@
 /* FIXED: Ribbon with proper top offset */
 .letter-ribbon {
     position: absolute;
-    top: -12px;
+    top: 5px;
     left: 50%;
     transform: translateX(-50%);
     background: linear-gradient(135deg, #ff85a9, #c084fc);
